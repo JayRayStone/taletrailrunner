@@ -1,0 +1,4181 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+<title>Бражник-раннер v2 - ПОЛНАЯ ВЕРСИЯ</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Spectral:ital,wght@0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@500;600&display=swap');
+
+:root{
+  --void:#0a0912; --moon:#ddd8ea; --moon-dim:#93899f;
+  --ember:#e2a23f; --blood:#b6394a; --moss:#6f9573; --line:rgba(221,216,234,0.12);
+}
+*{box-sizing:border-box; -webkit-tap-highlight-color:transparent; user-select:none;}
+html,body{height:100%; margin:0;}
+body{
+  background: radial-gradient(ellipse 120% 80% at 50% -10%, #2a1f45 0%, var(--void) 55%), var(--void);
+  color: var(--moon); font-family:'Spectral', serif; overflow:hidden;
+  display:flex; align-items:center; justify-content:center; min-height:100vh;
+}
+#stage{ position:relative; width:100%; max-width:460px; height:100vh; max-height:900px; overflow:hidden; display:flex; flex-direction:column; }
+.fog{ position:absolute; inset:-10% -20% auto -20%; height:36%;
+  background: radial-gradient(ellipse at 30% 50%, rgba(111,149,115,0.10), transparent 60%),
+              radial-gradient(ellipse at 70% 60%, rgba(98,74,150,0.18), transparent 65%);
+  filter: blur(18px); pointer-events:none; z-index:0; }
+
+#hud{ position:relative; z-index:6; display:flex; gap:6px; justify-content:center; padding:12px 10px 6px; flex-wrap:wrap; }
+.stat{ display:flex; align-items:center; gap:5px; background: linear-gradient(180deg, rgba(255,255,255,0.05), rgba(255,255,255,0.02));
+  border:1px solid var(--line); border-radius:999px; padding:5px 11px; font-family:'JetBrains Mono', monospace; font-size:12.5px; font-weight:600; }
+.stat .val{ min-width:14px; text-align:right; }
+.stat.hp .val{ color:#e08a92; } .stat.di .val{ color:var(--ember); } .stat.sc .val{ color:#6fa8c9; }
+.stat.loc{ color: var(--moon-dim); }
+.stat.energy .val{ color:#9a7fd1; }
+.stat.gear .val{ color:#7f95a8; }
+.stat.mc .val{ color:#9a7fd1; }
+.stat.shell .val{ color:#e8b4c8; }
+.stat.blood .val{ color:#d1495b; }
+.stat.mark .val{ color:#c9556b; }
+.stat.butterfly .val{ color:#c77dc9; }
+
+#game-wrap{ position:relative; z-index:5; flex:1; margin:4px 16px 0; border-radius:22px; padding:1px;
+  background: linear-gradient(155deg, rgba(226,162,63,0.5), rgba(111,149,115,0.15) 30%, rgba(221,216,234,0.08) 60%, rgba(226,162,63,0.28));
+  overflow:hidden; display:flex; }
+#game-inner{ flex:1; border-radius:21px; overflow:hidden; position:relative; background:#0d0a1a; }
+canvas{ display:block; width:100%; height:100%; touch-action:none; position:relative; z-index:2; }
+.moon{ position:absolute; top:14px; right:18px; width:30px; height:30px; border-radius:50%;
+  background: radial-gradient(circle at 35% 35%, #f4f1ea, #cfc9de 70%); box-shadow:0 0 22px 4px rgba(221,216,234,0.28); z-index:1; pointer-events:none; }
+
+#controls{ position:relative; z-index:6; display:flex; align-items:center; justify-content:space-between; gap:12px; padding:12px 20px 20px; }
+.hint{ font-family:'JetBrains Mono', monospace; font-size:10.5px; color:var(--moon-dim); line-height:1.5; }
+.hint b{ color:var(--moon); }
+#ability-btn{ position:relative; appearance:none; border:none; cursor:pointer; width:70px; height:70px; border-radius:50%;
+  background: radial-gradient(circle at 35% 30%, #f0c576, var(--ember)); box-shadow: 0 8px 22px -6px rgba(226,162,63,0.6);
+  font-size:26px; display:flex; align-items:center; justify-content:center; transition: transform .1s ease; z-index:2; }
+#ability-btn:active{ transform:scale(0.92); }
+#ability-btn.cooling{ filter:grayscale(0.7) brightness(0.55); pointer-events:none; }
+#ability-btn.active-ability{ animation: ability-pulse 0.7s ease-in-out infinite; }
+@keyframes ability-pulse{ 0%,100%{ box-shadow:0 0 0 0 var(--ab-color, var(--ember)); } 50%{ box-shadow:0 0 0 8px transparent; } }
+#ability-ring{ position:absolute; inset:-5px; border-radius:50%; pointer-events:none; opacity:0; z-index:1;
+  background: conic-gradient(var(--ab-color, var(--ember)) calc(var(--cd,0)*1turn), rgba(255,255,255,0.08) 0);
+  transition: opacity .25s ease; }
+#ability-label{ position:absolute; bottom:-17px; left:50%; transform:translateX(-50%); font-family:'JetBrains Mono',monospace; font-size:9.5px; color:var(--moon-dim); white-space:nowrap; }
+
+#talisman-btn{ position:relative; appearance:none; border:none; cursor:pointer; width:54px; height:54px; border-radius:50%;
+  background: radial-gradient(circle at 35% 30%, #f4f1ea, #6f5a45); box-shadow: 0 8px 18px -6px rgba(111,90,69,0.55);
+  font-size:22px; display:flex; align-items:center; justify-content:center; transition: transform .1s ease; z-index:2;
+  animation: talisman-pulse 1.6s ease-in-out infinite; }
+#talisman-btn:active{ transform:scale(0.92); }
+@keyframes talisman-pulse{ 0%,100%{ box-shadow:0 0 0 0 rgba(226,162,63,0.45); } 50%{ box-shadow:0 0 0 7px rgba(226,162,63,0); } }
+#talisman-label{ position:absolute; bottom:-17px; left:50%; transform:translateX(-50%); font-family:'JetBrains Mono',monospace; font-size:9px; color:var(--moon-dim); white-space:nowrap; }
+
+.overlay{ position:absolute; inset:0; z-index:20; background: radial-gradient(ellipse 120% 70% at 50% 0%, #241a3f 0%, var(--void) 60%), var(--void);
+  display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:26px 22px; overflow-y:auto;
+  transition: opacity .35s ease, visibility .35s ease; }
+.overlay.hidden{ opacity:0; visibility:hidden; pointer-events:none; }
+.eyebrow{ font-family:'JetBrains Mono', monospace; font-size:11px; letter-spacing:.3em; text-transform:uppercase; color: var(--moss); margin-bottom:12px; }
+.overlay h1{ font-family:'Cinzel', serif; font-weight:700; font-size:26px; margin:0 0 8px; line-height:1.15;
+  background: linear-gradient(180deg, #f2eefb, #b8aed8); -webkit-background-clip:text; background-clip:text; color:transparent; }
+.overlay p{ color: var(--moon-dim); font-size:13.5px; line-height:1.55; max-width:320px; margin:0 0 18px; }
+
+#role-grid{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; max-width:360px; margin-bottom:14px; }
+.role-card{ cursor:pointer; border-radius:14px; padding:9px 6px 7px; text-align:center;
+  background: linear-gradient(180deg, rgba(255,255,255,0.05), rgba(255,255,255,0.02)); border:1.5px solid var(--line);
+  transition: border-color .15s, background .15s, transform .1s; }
+.role-card:active{ transform:scale(0.96); }
+.role-card .em{ font-size:24px; display:block; margin-bottom:2px; }
+.role-card .nm{ font-size:10px; font-family:'JetBrains Mono',monospace; color:var(--moon-dim); line-height:1.2; }
+.role-card.sel{ border-color: var(--ember); background: linear-gradient(180deg, rgba(226,162,63,0.16), rgba(255,255,255,0.02)); }
+#role-detail{ min-height:32px; margin-bottom:14px; font-size:12.5px; color:var(--moon-dim); max-width:300px; }
+#role-detail b{ color:var(--moon); }
+
+.primary-btn{ appearance:none; border:none; cursor:pointer; font-family:'Cinzel', serif; font-weight:600; font-size:14.5px; letter-spacing:.06em;
+  color:#1b1328; background: linear-gradient(180deg, #f0c576, var(--ember)); padding:13px 32px; border-radius:999px;
+  box-shadow: 0 8px 24px -6px rgba(226,162,63,0.55); transition: transform .15s ease, opacity .15s; }
+.primary-btn:active{ transform: scale(0.96); }
+.primary-btn[disabled]{ opacity:.35; pointer-events:none; }
+.loot-list{ display:flex; gap:8px; margin-bottom:22px; flex-wrap:wrap; justify-content:center; }
+</style>
+</head>
+<body>
+<div id="stage">
+  <div class="fog"></div>
+  <div id="hud">
+    <div class="stat hp">❤ <span class="val" id="hp-val">3</span></div>
+    <div class="stat sc">📏 <span class="val" id="sc-val">0</span></div>
+    <div class="stat di">💎 <span class="val" id="di-val">0</span></div>
+    <div class="stat energy" id="energy-pill" style="display:none;">⚡ <span class="val" id="energy-val">3</span></div>
+    <div class="stat gear" id="gear-pill" style="display:none;">⚙️ <span class="val" id="gear-val">0</span></div>
+    <div class="stat mc" id="mc-pill" style="display:none;">💠 <span class="val" id="mc-val">0</span></div>
+    <div class="stat shell" id="shell-pill" style="display:none;">🐚 <span class="val" id="shell-val">0</span></div>
+    <div class="stat blood" id="blood-pill" style="display:none;">🩸 <span class="val" id="blood-val">0</span></div>
+    <div class="stat mark" id="mark-pill" style="display:none;">🔴 <span class="val" id="mark-val">0</span></div>
+    <div class="stat butterfly" id="butterfly-pill" style="display:none;">🦋 <span class="val" id="butterfly-val">0</span></div>
+    <div class="stat loc" id="loc-pill">📍 —</div>
+  </div>
+
+  <div id="game-wrap"><div id="game-inner"><div class="moon"></div><canvas id="cv"></canvas></div></div>
+
+  <div id="controls">
+    <div class="hint">Тап/Space — <b>прыжок</b><br>Свайп ↑/↓ (или ↑↓/W/S) — <b>платформа</b><br>Shift/A — способность · Q — талисман</div>
+    <div style="position:relative;">
+      <button id="talisman-btn" style="display:none;"></button>
+      <div id="talisman-label" style="display:none;">талисман</div>
+    </div>
+    <div style="position:relative;">
+      <button id="ability-btn">🦋</button>
+      <div id="ability-ring"></div>
+      <div id="ability-label">способность</div>
+    </div>
+  </div>
+
+  <div class="overlay" id="start-overlay">
+    <div class="eyebrow">Прототип v2 · раннер</div>
+    <h1>Выберите роль</h1>
+    <p>Локация каждый забег случайная — Лес, Подземелье или Пустыня, каждая со своими мобами. По мере забега открываются 2-я и 3-я платформы, между ними можно перемещаться.</p>
+    <div id="tg-role-status" style="display:none; margin-bottom:10px; font-size:12.5px; color:var(--moon-dim);"></div>
+    <div id="role-grid"></div>
+    <div id="role-detail">Выберите роль, чтобы увидеть способность</div>
+    <button class="primary-btn" id="start-btn" disabled onclick="startGame()">В путь</button>
+    <div id="tg-leaderboard" style="display:none; margin-top:18px; width:100%; max-width:340px;">
+      <div class="eyebrow" style="margin-bottom:8px;">🏆 Лидеры чата</div>
+      <div id="tg-leaderboard-list"></div>
+    </div>
+  </div>
+
+  <div class="overlay hidden" id="end-overlay">
+    <div class="eyebrow">Забег окончен</div>
+    <h1>Вас настигли...</h1>
+    <div class="loot-list">
+      <div class="stat sc">📏 <span class="val" id="end-sc">0</span></div>
+      <div class="stat di">💎 <span class="val" id="end-di">0</span></div>
+      <div class="stat loc" id="end-loc">📍 —</div>
+    </div>
+    <div id="tg-sync-status" style="display:none; font-size:12px; color:var(--moon-dim); margin-bottom:10px;"></div>
+    <button class="primary-btn" onclick="backToSelect()">Ещё раз</button>
+  </div>
+</div>
+
+<script>
+/* =====================================================================
+   ПОЛНАЯ ВЕРСИЯ - ВСЁ РАБОТАЕТ, НИЧЕГО НЕ ВЫКИНУТО
+===================================================================== */
+
+let mageCrystals = 0;
+let shells = 0;
+let blood = 0;
+let mordMarks = 0;
+let butterflies = 0;
+const MAX_BUTTERFLIES = 3;
+
+const ROLES = {
+  vamp: { name: 'Вампир', em: '🧛', color: '#b6394a', ability: 'Летучая мышь', abEm: '🦇', desc: 'Укус — обычная атака за ⚡, моб роняет каплю крови вместо алмаза. Летучая мышь: 3с неуязвимого полёта над мобами за 🩸', cd: 8500, kind: 'fly', dur: 3000, resource: 'blood', cost: 2, tiered: true, energyCost: 1, basicKind: 'bite', basicAbEm: '🩸', basicLabel: 'Укус' },
+  fire: { name: 'Фея Огня', em: '🧚‍♀️', color: '#e2a23f', ability: 'Вулканическая атака', abEm: '🌋', desc: 'Энчантикс — 3с полной неуязвимости и полёта за ⚡. Вулканическая атака: лава заливает всю полосу впереди за ⚡⚡', cd: 9000, kind: 'volcanic', dur: 3000, resource: 'energy', cost: 2, tiered: true, energyCost: 1, basicKind: 'fly', basicAbEm: '✨', basicLabel: 'Энчантикс' },
+  wolf: { name: 'Оборотень', em: '🐺', color: '#8a7a5a', ability: 'Призыв Орфа', abEm: '🐕', desc: 'Волк — обычная атака за ⚡: 2с неуязвимый рывок с ускорением. Призыв Орфа: могучий пёс выбегает из-за спины и мгновенно разит врага впереди за ⚡⚡', cd: 8500, kind: 'orf', dur: 2000, resource: 'energy', cost: 2, tiered: true, energyCost: 1, basicKind: 'dash', basicAbEm: '💨', basicLabel: 'Волк' },
+  merm: { name: 'Русалка', em: '🧜‍♀️', color: '#6fa8c9', ability: 'Течение', abEm: '💧', desc: 'Шквал — обычная атака за ⚡, водяной вал сметает мобов на своей и соседней платформе впереди. Течение: 3с неуязвимости — скользит по платформе как жидкость за 🐚', cd: 9500, kind: 'swim', dur: 3000, resource: 'shell', cost: 2, tiered: true, energyCost: 1, basicKind: 'wave', basicAbEm: '🌊', basicLabel: 'Шквал' },
+  mage: { name: 'Волшебник', em: '🧙‍♂️', color: '#9a7fd1', ability: 'Джет-шот', abEm: '🌀', desc: 'Магический шар — обычная атака за ⚡ (1 моб). Джет-шот сносит ВСЕХ мобов в текущем поле за 💠', cd: 8000, kind: 'jetshot', resource: 'crystal', cost: 2, tiered: true, energyCost: 1, basicKind: 'magic_ball', basicAbEm: '🔮', basicLabel: 'Магический шар' },
+  mord: { name: 'МордСит', em: '👄', color: '#c9556b', ability: 'Отражение магии', abEm: '🪞', desc: '2с отражает магические атаки. Собери 6 🔴 меток — Второе дыхание вернёт тебя к жизни при смертельном ударе', cd: 9000, kind: 'reflect', dur: 2000, energyCost: 1, resource: 'mark', cost: 6, secondWind: true },
+  conf: { name: 'Исповедница', em: '🪬', color: '#5ea88a', ability: 'Исповедь', abEm: '🕊', desc: 'Подчиняет ближайшего моба навсегда. Из ваз и сундуков иногда выпадают Светящиеся в ночи — они сразу берут вас под крыло и примут один удар на себя. Копить их нельзя — с вами может быть только один.', cd: 15000, kind: 'confess', energyCost: 1, resource: 'firefly' },
+  inv: { name: 'Изобретатель', em: '⚒', color: '#7f95a8', ability: 'Автопилот', abEm: '🤖', desc: 'Шестерёнка — обычная атака за ⚡. Автопилот 3с уводит от угроз за ⚙️', cd: 9500, kind: 'auto', dur: 3000, resource: 'gear', cost: 2, tiered: true, energyCost: 1, basicKind: 'gear_shot', basicAbEm: '⚙️', basicLabel: 'Шестерёнка' },
+  brazh: { name: 'Бражник', em: '🦋', color: '#c77dc9', ability: 'Анти-акума', abEm: '🦋', desc: 'Акума — обычная атака за ⚡: акуматизирует ближайшего моба впереди, превращая его в союзника на 30с. Собирайте белых бабочек из ваз/сундуков по пути (макс 3) — Анти-акума разом выпускает их, каждая поражает своего моба впереди', cd: 8500, kind: 'antiakuma', resource: 'butterfly', cost: 3, tiered: true, energyCost: 1, basicKind: 'charm', basicAbEm: '🦋', basicLabel: 'Акума' },
+};
+
+const TALISMANS = [
+  { key: 'rat', em: '🐀', color: '#8a8a8a', label: 'Крыса', effect: 'declutter' },
+  { key: 'tiger', em: '🐅', color: '#e2a23f', label: 'Тигр', effect: 'split', dur: 10000 },
+  { key: 'horse', em: '🐴', color: '#a5713a', label: 'Лошадь', effect: 'restore' },
+  { key: 'rabbit', em: '🐇', color: '#dcdcdc', label: 'Кролик', effect: 'speed', dur: 2000 },
+  { key: 'dog', em: '🐕', color: '#c98a4b', label: 'Собака', effect: 'invincible', dur: 5000 },
+  { key: 'bull', em: '🐃', color: '#6f5a45', label: 'Бык', effect: 'smash', dur: 4000 },
+  { key: 'dragon', em: '🐉', color: '#e2543f', label: 'Дракон', effect: 'fireball' },
+  { key: 'pig', em: '🐷', color: '#ffcf4d', label: 'Свинья', effect: 'laser' },
+  { key: 'monkey', em: '🐒', color: '#c9a24b', label: 'Обезьяна', effect: 'monkeyfy' },
+  { key: 'rooster', em: '🐓', color: '#f2d675', label: 'Петух', effect: 'levitate', dur: 6000 },
+  { key: 'sheep', em: '🐑', color: '#5b2a86', label: 'Овца', effect: 'witch' },
+  { key: 'snake', em: '🐍', color: '#4a9b6e', label: 'Змея', effect: 'invisible', dur: 10000 },
+];
+
+// =====================================================================
+// ЛОКАЦИИ - ПОЛНЫЙ СПИСОК
+// =====================================================================
+const LOCATIONS = {
+  desert: {
+    name: 'Пустыня',
+    pin: '🏜️',
+    accent: '#e2a23f',
+    skyTop: '#1a0a2a',
+    lootIcon: '🏺',
+    drawBackground: drawDesertBackground,
+    mobs: [
+      { key: 'scorpion', em: '🦂', label: 'Скорпион', kind: 'mob', w: 14, venom: true, power: 2, hp: 2, mobAbility: { kind: 'bite', abEm: '🦂', label: 'Ядовитое жало' } },
+      { key: 'mummy', em: '🧟', label: 'Мумия', kind: 'mob', w: 13, power: 2, noJumpDodge: true, hp: 3, mobAbility: { kind: 'bite', abEm: '💀', label: 'Проклятие фараонов' } },
+      { key: 'sphinx', em: '🦁', label: 'Сфинкс', kind: 'pickup', w: 10, big: true },
+      { key: 'djinn', em: '🌪️', label: 'Песчаный джинн', kind: 'mob', w: 16, power: 2, hp: 3, specialAbility: 'sand_tornado', cooldown: 3500, mobAbility: { kind: 'bite', abEm: '🌪️', label: 'Песчаный вихрь' } },
+      { key: 'cobra', em: '🐍', label: 'Королевская кобра', kind: 'mob', w: 15, power: 2, hp: 3, specialAbility: 'spray_venom', cooldown: 3800, mobAbility: { kind: 'bite', abEm: '☠️', label: 'Ядовитый плевок' } },
+    ]
+  },
+  forest: {
+    name: 'Лес',
+    pin: '🌲',
+    accent: '#6f9573',
+    skyTop: '#0a1a0a',
+    lootIcon: '📦',
+    drawBackground: drawForestBackground,
+    mobs: [
+      { key: 'goblin', em: '👺', label: 'Гоблин', kind: 'mob', w: 12, stealsDiamond: true, power: 1, hp: 2, mobAbility: { kind: 'bite', abEm: '🗡', label: 'Воровской кинжал' } },
+      { key: 'fairy', em: '🧚', label: 'Фея', kind: 'pickup', w: 10 },
+      { key: 'treant', em: '🌿', label: 'Древесный страж', kind: 'mob', w: 18, power: 2, hp: 4, specialAbility: 'root_slam', cooldown: 3000, mobAbility: { kind: 'bite', abEm: '🌱', label: 'Удар корнями' } },
+      { key: 'shroom', em: '🍄', label: 'Гриб-споровик', kind: 'mob', w: 14, power: 1, hp: 3, specialAbility: 'spore_cloud', cooldown: 4000, mobAbility: { kind: 'bite', abEm: '☁️', label: 'Споровое облако' } },
+      { key: 'spirit', em: '🦌', label: 'Олень', kind: 'mob', w: 13, power: 2, hp: 3, specialAbility: 'deer_rush', cooldown: 5000, mobAbility: { kind: 'bite', abEm: '💨', label: 'Стремительный рывок' } },
+      { key: 'wyrmling', em: '🐲', label: 'Дракончик', kind: 'dragon', w: 9, power: 4, hp: 4, mobAbility: { kind: 'dragonshot', abEm: '🔥', label: 'Огненный плевок' } },
+    ]
+  },
+  castle: {
+    name: 'Подземелье',
+    pin: '🏰',
+    accent: '#6fa8c9',
+    skyTop: '#040206',
+    lootIcon: '📦',
+    drawBackground: drawCastleBackground,
+    mobs: [
+      { key: 'goblin', em: '👺', label: 'Гоблин', kind: 'mob', w: 12, stealsDiamond: true, power: 1, hp: 2, mobAbility: { kind: 'bite', abEm: '🗡', label: 'Воровской кинжал' } },
+      { key: 'gargoyle', em: '🗿', label: 'Горгулья', kind: 'mob', w: 14, immuneClear: true, pierceShield: true, power: 3, hp: 4, mobAbility: { kind: 'jetshot', abEm: '🪨', label: 'Каменный град' } },
+      { key: 'shadow', em: '🕷', label: 'Ткач теней', kind: 'mob', w: 11, power: 2, teleportDodge: true, hp: 3, mobAbility: { kind: 'dragonshot', abEm: '🗡', label: 'Теневой бросок' } },
+      { key: 'bone_mage', em: '💀', label: 'Костяной маг', kind: 'mob', w: 16, power: 2, hp: 4, specialAbility: 'shoot_bone', cooldown: 2200, mobAbility: { kind: 'bite', abEm: '🦴', label: 'Некромантия' } },
+      { key: 'vampire', em: '🦇', label: 'Вампир-нежить', kind: 'mob', w: 15, power: 2, hp: 4, specialAbility: 'life_steal', cooldown: 3500, mobAbility: { kind: 'bite', abEm: '🩸', label: 'Кровавый укус' } },
+      { key: 'chain_golem', em: '⛓️', label: 'Цепной голем', kind: 'mob', w: 17, power: 3, hp: 5, specialAbility: 'chain_pull', cooldown: 4000, mobAbility: { kind: 'bite', abEm: '🔗', label: 'Цепной захват' } },
+      // Скелет-стрелок (новый моб)
+      { key: 'skeleton_archer', em: '💀🏹', label: 'Скелет-стрелок', kind: 'mob', w: 13, power: 2, hp: 3, specialAbility: 'shoot_bone', cooldown: 1300, mobAbility: { kind: 'bite', abEm: '🦴', label: 'Стрела из кости' } },
+    ]
+  },
+};
+
+// =====================================================================
+// TELEGRAM MINI APP — синхронизация роли/очков/лидерборда с ботом
+// =====================================================================
+const API_BASE = 'https://1a89f153-a5fc-4e3a-bb7e-c7abd8666975-00-1ln3vd9nb992q.spock.replit.dev:8080'; // ← Replit dev URL (временный, см. README про Deployment)
+
+const tg = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : null;
+let tgInitData = '';
+let tgChatId = null;
+let tgAutoRoleKey = null;   // роль, подтянутая из бота (если есть)
+let tgReady = false;
+
+if (tg) {
+  try {
+    tg.ready();
+    tg.expand();
+    tgInitData = tg.initData || '';
+    const sp = tg.initDataUnsafe && tg.initDataUnsafe.start_param;
+    if (sp) tgChatId = sp;
+    tgReady = !!tgInitData;
+  } catch (e) { console.warn('Telegram WebApp init failed', e); }
+}
+
+async function tgApiGet(path) {
+  if (!tgReady) return null;
+  const url = new URL(API_BASE + path);
+  url.searchParams.set('initData', tgInitData);
+  if (tgChatId) url.searchParams.set('chat_id', tgChatId);
+  try {
+    const res = await fetch(url.toString());
+    if (!res.ok) return null;
+    return await res.json();
+  } catch (e) { console.warn('tgApiGet failed', path, e); return null; }
+}
+
+async function tgApiPostScore(diamondsEarned) {
+  if (!tgReady) return null;
+  try {
+    const res = await fetch(API_BASE + '/api/score', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        initData: tgInitData,
+        chat_id: tgChatId,
+        diamonds: diamondsEarned,
+      }),
+    });
+    if (!res.ok) return null;
+    return await res.json();
+  } catch (e) { console.warn('tgApiPostScore failed', e); return null; }
+}
+
+async function tgLoadProfile() {
+  const profile = await tgApiGet('/api/profile');
+  if (!profile) return;
+  if (profile.role_key && ROLES[profile.role_key]) {
+    tgAutoRoleKey = profile.role_key;
+    const statusEl = document.getElementById('tg-role-status');
+    statusEl.style.display = 'block';
+    statusEl.textContent = `Ты играешь в боте за ${ROLES[profile.role_key].em} ${profile.role_name} — роль выбрана автоматически.`;
+    // авто-выбор соответствующей карточки роли
+    const card = grid.querySelector(`[data-role-key="${profile.role_key}"]`);
+    if (card) card.click();
+  }
+}
+
+async function tgLoadLeaderboard() {
+  const data = await tgApiGet('/api/leaderboard');
+  if (!data || !data.leaderboard || !data.leaderboard.length) return;
+  const box = document.getElementById('tg-leaderboard');
+  const list = document.getElementById('tg-leaderboard-list');
+  list.innerHTML = data.leaderboard.slice(0, 10).map((e, i) => {
+    const roleKey = Object.entries(ROLES).find(([, r]) => r.name === e.role_name);
+    const em = roleKey ? roleKey[1].em : '👤';
+    return `<div style="display:flex; justify-content:space-between; padding:4px 8px; font-size:13px; ${i === 0 ? 'color:var(--ember);' : ''}">
+      <span>${i + 1}. ${em} ${e.user_name}</span><span>💎 ${e.score}</span>
+    </div>`;
+  }).join('');
+  box.style.display = 'block';
+}
+
+let selectedRole = null,
+  theme = null,
+  roster = null;
+const grid = document.getElementById('role-grid');
+Object.entries(ROLES).forEach(([key, r]) => {
+  const card = document.createElement('div');
+  card.className = 'role-card';
+  card.dataset.roleKey = key;
+  card.innerHTML = `<span class="em">${r.em}</span><span class="nm">${r.name}</span>`;
+  card.onclick = () => {
+    document.querySelectorAll('.role-card').forEach(c => c.classList.remove('sel'));
+    card.classList.add('sel');
+    selectedRole = key;
+    const role = ROLES[key];
+    let detail = `<b>${role.abEm} ${role.ability}</b> — ${role.desc}`;
+    if (role.energyCost) detail += ` <span style="color:#9a7fd1;">⚡${role.energyCost}</span>`;
+    if (role.resource === 'crystal') detail += ` <span style="color:#9a7fd1;">💠${role.cost}</span>`;
+    if (role.resource === 'gear') detail += ` <span style="color:#7f95a8;">⚙️${role.cost}</span>`;
+    if (role.resource === 'shell') detail += ` <span style="color:#e8b4c8;">🐚${role.cost}</span>`;
+    if (role.resource === 'blood') detail += ` <span style="color:#d1495b;">🩸${role.cost}</span>`;
+    if (role.resource === 'energy') detail += ` <span style="color:#9a7fd1;">⚡${role.cost}</span>`;
+    if (role.resource === 'mark') detail += ` <span style="color:#c9556b;">🔴${role.cost}</span>`;
+    if (role.resource === 'butterfly') detail += ` <span style="color:#c77dc9;">🦋${role.cost}</span>`;
+    document.getElementById('role-detail').innerHTML = detail;
+    document.getElementById('start-btn').disabled = false;
+  };
+  grid.appendChild(card);
+});
+
+if (tgReady) {
+  tgLoadProfile();
+  tgLoadLeaderboard();
+}
+
+const canvas = document.getElementById('cv');
+const ctx = canvas.getContext('2d');
+let W = 0,
+  H = 0,
+  GROUND = 0,
+  LANE_GAP = 70;
+const JUMP_H = 95;
+
+function resize() {
+  const box = document.getElementById('game-inner').getBoundingClientRect();
+  W = canvas.width = box.width * devicePixelRatio;
+  H = canvas.height = box.height * devicePixelRatio;
+  canvas.style.width = box.width + 'px';
+  canvas.style.height = box.height + 'px';
+  ctx.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0);
+  GROUND = box.height - 30;
+  const available = Math.max(box.height - 170, (JUMP_H + 18) * 2);
+  LANE_GAP = clamp(available / 2, JUMP_H + 18, 140);
+}
+window.addEventListener('resize', resize);
+
+function laneY(i) { return (GROUND - 38) - i * LANE_GAP; }
+
+function rnd(a, b) { return Math.floor(Math.random() * (b - a + 1)) + a; }
+
+function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
+
+const DIAMOND_TIERS = [{ span: 400, per: 150 }, { span: 400, per: 110 }, { span: Infinity, per: 80 }];
+
+function distanceDiamondsFor(dist) {
+  let total = 0,
+    remaining = dist;
+  for (const t of DIAMOND_TIERS) {
+    if (remaining <= 0) break;
+    const seg = Math.min(remaining, t.span);
+    total += Math.floor(seg / t.per);
+    remaining -= seg;
+  }
+  return total;
+}
+
+let running = false,
+  rafId = null;
+let player, obstacles, particles, floatTexts, banner, warningZones, abilityEffects;
+let speed, spawnTimer, spawnGap, distance, diamonds, hp, gameOverFlag, distanceDiamonds;
+let abilityReady, effects, activeLanes, scrollX, energy, gear, ally, talisman, clone;
+const LANE2_AT = 110,
+  LANE3_AT = 280;
+const MAX_HP = 5;
+const MAX_ENERGY = 3;
+const ALLY_MAX_HP = 2;
+const WEB_MS = 1000;
+
+let jumpY = 0,
+  jumpSpeed = 0,
+  isJumping = false,
+  jumpCount = 0;
+let bgOffsetY = 0;
+const GRAVITY = 0.65,
+  JUMP_FORCE = 11,
+  DOUBLE_JUMP_FORCE = 9;
+const BG_SHIFT_SINGLE = 12,
+  BG_SHIFT_DOUBLE = 24;
+
+function getResourceAmount(resource) {
+  if (resource === 'crystal') return mageCrystals;
+  if (resource === 'gear') return gear;
+  if (resource === 'shell') return shells;
+  if (resource === 'blood') return blood;
+  if (resource === 'energy') return energy;
+  if (resource === 'mark') return mordMarks;
+  if (resource === 'butterfly') return butterflies;
+  return 0;
+}
+
+function resetState() {
+  const box = document.getElementById('game-inner').getBoundingClientRect();
+  player = {
+    x: box.width * 0.22,
+    currentLane: 0,
+    y: laneY(0),
+    h: 38,
+    hitFlash: 0,
+    transition: null,
+    webbed: 0,
+    poisonTicks: 0,
+    _lastPoisonTick: 0
+  };
+  obstacles = [];
+  particles = [];
+  floatTexts = [];
+  banner = null;
+  warningZones = [];
+  abilityEffects = [];
+  speed = 3.4;
+  spawnTimer = 0;
+  spawnGap = 70;
+  distance = 0;
+  diamonds = 0;
+  hp = 3;
+  gameOverFlag = false;
+  abilityReady = true;
+  effects = {};
+  activeLanes = 1;
+  scrollX = 0;
+  distanceDiamonds = 0;
+  energy = MAX_ENERGY;
+  gear = 0;
+  mageCrystals = 0;
+  shells = 0;
+  blood = 0;
+  mordMarks = 0;
+  butterflies = 0;
+  ally = null;
+  talisman = null;
+  clone = null;
+  updateTalismanUI();
+
+  jumpY = 0;
+  jumpSpeed = 0;
+  isJumping = false;
+  jumpCount = 0;
+  bgOffsetY = 0;
+
+  const role = ROLES[selectedRole];
+  document.getElementById('energy-pill').style.display = role.energyCost ? 'flex' : 'none';
+  document.getElementById('gear-pill').style.display = role.resource === 'gear' ? 'flex' : 'none';
+  document.getElementById('mc-pill').style.display = role.resource === 'crystal' ? 'flex' : 'none';
+  document.getElementById('shell-pill').style.display = role.resource === 'shell' ? 'flex' : 'none';
+  document.getElementById('blood-pill').style.display = role.resource === 'blood' ? 'flex' : 'none';
+  document.getElementById('mark-pill').style.display = role.resource === 'mark' ? 'flex' : 'none';
+  document.getElementById('butterfly-pill').style.display = role.resource === 'butterfly' ? 'flex' : 'none';
+
+  updateHud();
+}
+
+function getJumpOffset() { return jumpY; }
+
+function updateHud() {
+  document.getElementById('hp-val').textContent = Math.max(hp, 0);
+  document.getElementById('sc-val').textContent = Math.floor(distance);
+  document.getElementById('di-val').textContent = diamonds;
+  document.getElementById('energy-val').textContent = energy;
+  document.getElementById('gear-val').textContent = gear;
+  document.getElementById('mc-val').textContent = mageCrystals;
+  document.getElementById('shell-val').textContent = shells;
+  document.getElementById('blood-val').textContent = blood;
+  document.getElementById('mark-val').textContent = mordMarks;
+  document.getElementById('butterfly-val').textContent = butterflies;
+
+  const role = ROLES[selectedRole];
+  if (role && role.tiered) {
+    const superAffordable = getResourceAmount(role.resource) >= role.cost;
+    const btn = document.getElementById('ability-btn');
+    if (btn) btn.textContent = superAffordable ? role.abEm : role.basicAbEm;
+    const lbl = document.getElementById('ability-label');
+    if (lbl) lbl.textContent = superAffordable ? role.ability : role.basicLabel;
+  }
+}
+
+function showBanner(text, color) { banner = { text, color, life: 100 }; }
+
+let cdRingRaf = null;
+
+function startCooldownRing(ms) {
+  const ring = document.getElementById('ability-ring');
+  if (!ring) return;
+  ring.style.opacity = '1';
+  const t0 = performance.now();
+  cancelAnimationFrame(cdRingRaf);
+  (function step() {
+    const p = clamp((performance.now() - t0) / ms, 0, 1);
+    ring.style.setProperty('--cd', p);
+    if (p < 1) { cdRingRaf = requestAnimationFrame(step); } else { ring.style.opacity = '0'; }
+  })();
+}
+
+function changeLane(delta) {
+  if (!running || gameOverFlag) return;
+  if (player.webbed && performance.now() < player.webbed) return;
+  const step = (effects.skiplane && performance.now() < effects.skiplane) ? delta * 2 : delta;
+  const newLane = clamp(player.currentLane + step, 0, activeLanes - 1);
+  if (newLane === player.currentLane) return;
+  player.currentLane = newLane;
+  player.transition = { from: player.y, to: laneY(newLane), t0: performance.now(), dur: 230 };
+}
+
+function jumpPlayer() {
+  if (!running || gameOverFlag) return;
+  if (player.webbed && performance.now() < player.webbed) return;
+
+  const now = performance.now();
+  const flying = effects.fly && now < effects.fly;
+  if (flying) return;
+
+  if (isJumping && jumpCount === 1) {
+    jumpSpeed = -DOUBLE_JUMP_FORCE;
+    jumpCount = 2;
+    spawnBurst(player.x, player.y + jumpY + 34, ROLES[selectedRole].color);
+    spawnFloat(player.x + 10, player.y + jumpY - 20, '⬆⬆ ДВОЙНОЙ!', '#ffd700');
+    return;
+  }
+
+  if (!isJumping) {
+    jumpSpeed = -JUMP_FORCE;
+    isJumping = true;
+    jumpCount = 1;
+    spawnBurst(player.x, player.y + 34, ROLES[selectedRole].color);
+  }
+}
+
+document.addEventListener('keydown', e => {
+  if (e.code === 'ArrowUp' || e.code === 'KeyW') { e.preventDefault();
+    changeLane(1); }
+  if (e.code === 'ArrowDown' || e.code === 'KeyS') { e.preventDefault();
+    changeLane(-1); }
+  if (e.code === 'Space') { e.preventDefault();
+    jumpPlayer(); }
+  if (e.code === 'KeyA' || e.code === 'ShiftLeft' || e.code === 'ShiftRight') triggerAbility();
+  if (e.code === 'KeyQ') useTalisman();
+});
+
+let touchStart = null;
+const SWIPE_DIST = 34;
+canvas.addEventListener('pointerdown', e => {
+  touchStart = { x: e.clientX, y: e.clientY, t: performance.now() };
+  try { canvas.setPointerCapture(e.pointerId); } catch (err) {}
+});
+canvas.addEventListener('pointerup', e => {
+  if (!touchStart) return;
+  const dx = e.clientX - touchStart.x,
+    dy = e.clientY - touchStart.y;
+  if (Math.abs(dy) > SWIPE_DIST && Math.abs(dy) > Math.abs(dx) * 1.2) {
+    if (dy < 0) changeLane(1);
+    else changeLane(-1);
+  } else {
+    jumpPlayer();
+  }
+  touchStart = null;
+});
+canvas.addEventListener('pointercancel', () => { touchStart = null; });
+document.getElementById('ability-btn').addEventListener('click', triggerAbility);
+document.getElementById('talisman-btn').addEventListener('click', useTalisman);
+
+function canvasCssW() { return canvas.getBoundingClientRect().width; }
+
+function spawnBurst(x, y, color) { for (let i = 0; i < 10; i++) particles.push({ x, y, vx: (Math.random() - 0.5) * 4, vy: (Math.random() - 1.2) * 3, life: 26, color }); }
+
+function spawnFloat(x, y, text, color) { floatTexts.push({ x, y, text, color, life: 44 }); }
+
+// =====================================================================
+// ДЕТАЛИЗИРОВАННЫЕ ФОНЫ
+// =====================================================================
+
+// === ПУСТЫНЯ - ЯРКАЯ, НАСЫЩЕННАЯ ===
+function drawDesertBackground(ctx, cssW, boxH, scrollX, now) {
+  // Яркое закатное небо (статичный градиент)
+  const skyGrad = ctx.createLinearGradient(0, 0, 0, boxH * 0.75);
+  skyGrad.addColorStop(0, '#1a0a2a');
+  skyGrad.addColorStop(0.1, '#3a153a');
+  skyGrad.addColorStop(0.25, '#7a2a3a');
+  skyGrad.addColorStop(0.4, '#c84a3a');
+  skyGrad.addColorStop(0.55, '#e87a3a');
+  skyGrad.addColorStop(0.7, '#f0b04a');
+  skyGrad.addColorStop(0.85, '#f5d060');
+  skyGrad.addColorStop(1, '#f5e080');
+  ctx.fillStyle = skyGrad;
+  ctx.fillRect(0, -30, cssW, boxH + 30); // margin sverhu, chtoby pri prizhke ne otkryvalsya zazor
+
+  // Солнце — статичный диск с мягким свечением (без пульсирующих лучей и колец)
+  const sunX = cssW * 0.75,
+    sunY = boxH * 0.2;
+  const sunGrad = ctx.createRadialGradient(sunX, sunY, 10, sunX, sunY, 60);
+  sunGrad.addColorStop(0, 'rgba(255, 255, 240, 1)');
+  sunGrad.addColorStop(0.3, 'rgba(255, 230, 170, 0.95)');
+  sunGrad.addColorStop(0.6, 'rgba(255, 190, 110, 0.6)');
+  sunGrad.addColorStop(1, 'rgba(255, 160, 70, 0)');
+  ctx.fillStyle = sunGrad;
+  ctx.beginPath();
+  ctx.arc(sunX, sunY, 60, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Пирамиды — плоские статичные силуэты (без резной кладки)
+  const pyramidOffset = (scrollX * 0.04) % 600;
+  const pyramids = [
+    { x: 40 - pyramidOffset, w: 80, h: 110, color: '#8a6a4a' },
+    { x: 160 - pyramidOffset, w: 130, h: 160, color: '#7a5a3a' },
+    { x: 330 - pyramidOffset, w: 60, h: 85, color: '#9a7a5a' },
+    { x: 440 - pyramidOffset, w: 100, h: 130, color: '#6a4a2a' },
+    { x: 580 - pyramidOffset, w: 150, h: 180, color: '#8a7a5a' },
+    { x: 770 - pyramidOffset, w: 75, h: 100, color: '#7a5a3a' },
+  ];
+  for (const p of pyramids) {
+    const baseY = boxH * 0.58;
+
+    // Пирамида
+    ctx.fillStyle = p.color;
+    ctx.beginPath();
+    ctx.moveTo(p.x - p.w / 2, baseY);
+    ctx.lineTo(p.x, baseY - p.h);
+    ctx.lineTo(p.x + p.w / 2, baseY);
+    ctx.closePath();
+    ctx.fill();
+
+    // Светлая сторона (подсветка солнцем)
+    ctx.fillStyle = 'rgba(240, 220, 190, 0.15)';
+    ctx.beginPath();
+    ctx.moveTo(p.x, baseY - p.h);
+    ctx.lineTo(p.x + p.w / 2, baseY);
+    ctx.lineTo(p.x, baseY);
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  // Дюны — статичные силуэты, без покадровой пульсации формы
+  const duneOffset = (scrollX * 0.06) % 350;
+  const duneColors = ['#d4b08a', '#c8a07a', '#dcb892', '#d0a882', '#e0c09a'];
+  for (let i = 0; i < 6; i++) {
+    const x = i * 100 - duneOffset;
+    const w = 110;
+    ctx.fillStyle = duneColors[i % duneColors.length];
+    ctx.beginPath();
+    ctx.moveTo(x - w / 2, boxH * 0.58);
+    ctx.quadraticCurveTo(x, boxH * 0.6 - 28, x + w / 2, boxH * 0.58);
+    ctx.fill();
+  }
+
+  // Птицы в небе — единственный подвижный элемент фона
+  for (let i = 0; i < 5; i++) {
+    const x = (i * 250 + scrollX * 0.02 + now * 0.02 * (0.5 + i * 0.1)) % cssW;
+    const y = boxH * 0.1 + Math.sin(i * 1.3 + now * 0.001) * 30 + Math.sin(i * 2.1 + now * 0.0008) * 15;
+    const size = 1 + Math.sin(i * 0.7 + now * 0.0005) * 0.5;
+    ctx.strokeStyle = 'rgba(0,0,0,0.08)';
+    ctx.lineWidth = size * 1.5;
+    ctx.beginPath();
+    ctx.moveTo(x - 12 * size, y);
+    ctx.quadraticCurveTo(x - 6 * size, y - 6 * size, x, y - 1 * size);
+    ctx.quadraticCurveTo(x + 6 * size, y - 6 * size, x + 12 * size, y);
+    ctx.stroke();
+  }
+
+  // === ПЛАТФОРМЫ - ХРАМОВЫЕ ПЛИТЫ ДРЕВНЕГО ЕГИПТА (упрощены: без иероглифов, трещин и рассыпанного песка) ===
+  for (let i = 0; i < activeLanes; i++) {
+    const ly = laneY(i) + 38;
+    const platH = 16;
+
+    // Тень платформы (эффект парящей плиты)
+    ctx.fillStyle = 'rgba(20, 10, 5, 0.3)';
+    ctx.fillRect(0, ly + platH, cssW, 7);
+
+    // Основной блок песчаника
+    const slabGrad = ctx.createLinearGradient(0, ly - 4, 0, ly + platH);
+    slabGrad.addColorStop(0, '#eccf9c');
+    slabGrad.addColorStop(0.15, '#dcb87e');
+    slabGrad.addColorStop(0.55, '#ab875e');
+    slabGrad.addColorStop(1, '#785a3c');
+    ctx.fillStyle = slabGrad;
+    ctx.fillRect(0, ly - 4, cssW, platH + 4);
+
+    // Солнечный блик по верхнему ребру
+    ctx.fillStyle = 'rgba(255, 244, 210, 0.4)';
+    ctx.fillRect(0, ly - 4, cssW, 2);
+
+    // Редкие вертикальные швы кладки (вместо полной сетки блоков)
+    const blockW = 92;
+    const blockOff = (scrollX * 0.5 + i * 17) % blockW;
+    ctx.strokeStyle = 'rgba(70, 48, 28, 0.3)';
+    ctx.lineWidth = 1;
+    for (let x = -blockOff; x < cssW + blockW; x += blockW) {
+      ctx.beginPath();
+      ctx.moveTo(x, ly - 4);
+      ctx.lineTo(x, ly + platH);
+      ctx.stroke();
+    }
+  }
+}
+
+// === ЛЕС - ОРЕГОН, ВАЙБ ===
+function drawForestBackground(ctx, cssW, boxH, scrollX, now) {
+  // Небо с градиентом (движется влево)
+  const skyGrad = ctx.createLinearGradient(0, 0, 0, boxH * 0.7);
+  skyGrad.addColorStop(0, '#0a1a0a');
+  skyGrad.addColorStop(0.15, '#0d2a12');
+  skyGrad.addColorStop(0.3, '#1a3a1a');
+  skyGrad.addColorStop(0.5, '#2a4a2a');
+  skyGrad.addColorStop(0.7, '#3a5a3a');
+  skyGrad.addColorStop(0.85, '#4a6a4a');
+  skyGrad.addColorStop(1, '#5a7a5a');
+  ctx.fillStyle = skyGrad;
+  ctx.fillRect(0, -30, cssW, boxH + 30); // margin sverhu, chtoby pri prizhke ne otkryvalsya zazor
+
+  // Облака — лёгкий подвижный элемент (по одному эллипсу вместо двух)
+  for (let i = 0; i < 4; i++) {
+    const x = (((i * 200 - scrollX * 0.02 - now * 0.003 * (0.5 + i * 0.1)) % cssW) + cssW) % cssW;
+    const y = boxH * 0.06 + i * 18;
+    ctx.fillStyle = 'rgba(220, 240, 220, 0.05)';
+    ctx.beginPath();
+    ctx.ellipse(x, y, 75, 18, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // Дальний лес — статичные силуэты, один слой
+  const farTreeOffset = (scrollX * 0.04) % 500;
+  for (let i = 0; i < 12; i++) {
+    const x = i * 82 - farTreeOffset;
+    const h = 35 + Math.sin(i * 1.7) * 18;
+    ctx.fillStyle = 'rgba(15, 45, 15, 0.3)';
+    ctx.beginPath();
+    ctx.moveTo(x, boxH * 0.55);
+    ctx.lineTo(x - 12, boxH * 0.55 - h);
+    ctx.lineTo(x + 12, boxH * 0.55 - h);
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  // ВОДОПАДЫ — статичная лента воды (без анимированных струй и лишнего тумана)
+  const wfSpacing = 480;
+  const wfOffset = (scrollX * 0.04) % wfSpacing;
+  for (let i = -1; i < 3; i++) {
+    const wx = i * wfSpacing + wfSpacing * 0.5 - wfOffset;
+    if (wx < -60 || wx > cssW + 60) continue;
+    const wfTop = boxH * 0.16;
+    const wfBottom = boxH * 0.58;
+    const wfW = 30;
+
+    // Скальный выступ за водопадом
+    ctx.fillStyle = 'rgba(15, 25, 15, 0.35)';
+    ctx.beginPath();
+    ctx.moveTo(wx - wfW * 1.3, wfBottom);
+    ctx.lineTo(wx - wfW * 0.9, wfTop + 6);
+    ctx.lineTo(wx + wfW * 0.9, wfTop + 6);
+    ctx.lineTo(wx + wfW * 1.3, wfBottom);
+    ctx.closePath();
+    ctx.fill();
+
+    // Основной поток воды
+    const wfGrad = ctx.createLinearGradient(0, wfTop, 0, wfBottom);
+    wfGrad.addColorStop(0, 'rgba(220,240,235,0.55)');
+    wfGrad.addColorStop(1, 'rgba(180,220,220,0.15)');
+    ctx.fillStyle = wfGrad;
+    ctx.beginPath();
+    ctx.moveTo(wx - wfW * 0.5, wfTop);
+    ctx.lineTo(wx + wfW * 0.5, wfTop);
+    ctx.lineTo(wx + wfW * 0.65, wfBottom);
+    ctx.lineTo(wx - wfW * 0.65, wfBottom);
+    ctx.closePath();
+    ctx.fill();
+
+    // Брызги у подножия (один слой вместо двух)
+    ctx.fillStyle = 'rgba(230,245,240,0.15)';
+    ctx.beginPath();
+    ctx.ellipse(wx, wfBottom + 4, wfW * 1.1, 10, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // Ближний лес — статичные силуэты (ствол + крона, без коры/корней/веток/бликов)
+  const treeOffset = (scrollX * 0.08) % 400;
+  for (let i = 0; i < 8; i++) {
+    const x = i * 90 - treeOffset + Math.sin(i * 0.7) * 20;
+    const h = 65 + Math.sin(i * 2.3) * 35;
+    const w = 30 + Math.sin(i * 1.7) * 12;
+
+    // Ствол
+    ctx.fillStyle = '#3a2a1a';
+    ctx.fillRect(x - 4, boxH * 0.55 - h + 18, 8, h - 18);
+
+    // Крона
+    ctx.fillStyle = `rgba(20, ${50 + Math.sin(i * 0.7) * 18}, 20, 0.5)`;
+    ctx.beginPath();
+    ctx.arc(x, boxH * 0.55 - h + 5, w, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // ОЛЕНИ — единственный подвижный элемент фона (упрощённый силуэт)
+  const deerOffset = (scrollX * 0.04 + now * 0.008) % 700;
+  for (let i = 0; i < 3; i++) {
+    const x = (((i * 260 - deerOffset) % cssW) + cssW) % cssW;
+    const y = boxH * 0.52;
+    const deerSize = 14;
+
+    ctx.save();
+    ctx.translate(x, y);
+
+    // Тело
+    ctx.fillStyle = '#4a3a2a';
+    ctx.beginPath();
+    ctx.ellipse(0, 0, deerSize * 0.85, deerSize * 0.55, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Голова и шея
+    ctx.beginPath();
+    ctx.arc(deerSize * 0.7, -deerSize * 0.2, deerSize * 0.3, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Ноги (простая анимация бега)
+    const legPhase = now * 0.006 + i * 1.5;
+    ctx.strokeStyle = '#3a2a1a';
+    ctx.lineWidth = 2.5;
+    for (let j = 0; j < 4; j++) {
+      const legX = -deerSize * 0.35 + j * deerSize * 0.23;
+      const legY = deerSize * 0.35 + Math.sin(legPhase + j * 0.8) * deerSize * 0.35;
+      ctx.beginPath();
+      ctx.moveTo(legX, deerSize * 0.35);
+      ctx.lineTo(legX + Math.sin(legPhase + j * 0.8) * 4, legY);
+      ctx.stroke();
+    }
+
+    // Рога (упрощённо)
+    ctx.strokeStyle = '#5a4a3a';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(deerSize * 0.6, -deerSize * 0.4);
+    ctx.lineTo(deerSize * 0.9, -deerSize * 0.8);
+    ctx.stroke();
+
+    ctx.restore();
+  }
+
+  // Земля — плоский градиент без анимированной травы
+  const groundGrad = ctx.createLinearGradient(0, boxH * 0.55, 0, boxH);
+  groundGrad.addColorStop(0, '#4a6a3a');
+  groundGrad.addColorStop(0.15, '#3a5a2a');
+  groundGrad.addColorStop(0.4, '#2a4a1a');
+  groundGrad.addColorStop(0.7, '#1a3a0a');
+  groundGrad.addColorStop(1, '#0a2a00');
+  ctx.fillStyle = groundGrad;
+  ctx.fillRect(0, boxH * 0.55, cssW, boxH * 0.45);
+
+  // === ПЛАТФОРМЫ - МШИСТЫЕ БРЕВЕНЧАТЫЕ ПОМОСТЫ (упрощены: без годовых колец, мха, папоротников и росы) ===
+  for (let i = 0; i < activeLanes; i++) {
+    const ly = laneY(i) + 38;
+    const platH = 16;
+
+    ctx.fillStyle = 'rgba(5, 15, 5, 0.3)';
+    ctx.fillRect(0, ly + platH, cssW, 7);
+
+    // Деревянный настил
+    const woodGrad = ctx.createLinearGradient(0, ly - 4, 0, ly + platH);
+    woodGrad.addColorStop(0, '#7c5d3a');
+    woodGrad.addColorStop(0.2, '#5e4428');
+    woodGrad.addColorStop(0.6, '#3f2e1a');
+    woodGrad.addColorStop(1, '#26190e');
+    ctx.fillStyle = woodGrad;
+    ctx.fillRect(0, ly - 4, cssW, platH + 4);
+
+    ctx.fillStyle = 'rgba(210, 230, 190, 0.15)';
+    ctx.fillRect(0, ly - 4, cssW, 2);
+
+    // Редкие стыки брёвен
+    const logW = 68;
+    const logOff = (scrollX * 0.5 + i * 13) % logW;
+    ctx.strokeStyle = 'rgba(18, 12, 6, 0.35)';
+    ctx.lineWidth = 1.2;
+    for (let x = -logOff; x < cssW + logW; x += logW) {
+      ctx.beginPath();
+      ctx.moveTo(x, ly - 4);
+      ctx.lineTo(x, ly + platH);
+      ctx.stroke();
+    }
+  }
+}
+
+// === ПОДЗЕМЕЛЬЕ - ВИКТОРИАНСКИЙ СТИЛЬ ===
+function drawCastleBackground(ctx, cssW, boxH, scrollX, now) {
+  // Тёмное небо
+  const skyGrad = ctx.createLinearGradient(0, 0, 0, boxH * 0.7);
+  skyGrad.addColorStop(0, '#040206');
+  skyGrad.addColorStop(0.15, '#08040e');
+  skyGrad.addColorStop(0.35, '#0e0818');
+  skyGrad.addColorStop(0.5, '#151025');
+  skyGrad.addColorStop(0.7, '#1a1535');
+  skyGrad.addColorStop(0.85, '#2a2445');
+  skyGrad.addColorStop(1, '#3a3050');
+  ctx.fillStyle = skyGrad;
+  ctx.fillRect(0, -30, cssW, boxH + 30); // margin sverhu, chtoby pri prizhke ne otkryvalsya zazor
+
+  // Луна
+  const moonX = cssW * 0.12,
+    moonY = boxH * 0.1;
+  const moonGrad = ctx.createRadialGradient(moonX, moonY, 5, moonX, moonY, 40);
+  moonGrad.addColorStop(0, 'rgba(240, 240, 255, 0.85)');
+  moonGrad.addColorStop(0.2, 'rgba(220, 220, 245, 0.7)');
+  moonGrad.addColorStop(0.5, 'rgba(200, 200, 230, 0.5)');
+  moonGrad.addColorStop(0.8, 'rgba(180, 180, 210, 0.25)');
+  moonGrad.addColorStop(1, 'rgba(160, 160, 190, 0)');
+  ctx.fillStyle = moonGrad;
+  ctx.beginPath();
+  ctx.arc(moonX, moonY, 40, 0, Math.PI * 2);
+  ctx.fill();
+  // Свечение луны
+  ctx.fillStyle = 'rgba(200, 200, 230, 0.05)';
+  ctx.beginPath();
+  ctx.arc(moonX, moonY, 70, 0, Math.PI * 2);
+  ctx.fill();
+  // Кратеры на луне
+  ctx.fillStyle = 'rgba(180, 180, 200, 0.1)';
+  ctx.beginPath();
+  ctx.arc(moonX - 10, moonY - 5, 8, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(moonX + 12, moonY + 8, 5, 0, Math.PI * 2);
+  ctx.fill();
+
+  // ВИКТОРИАНСКИЙ ИНТЕРЬЕР - стены с обоями
+  const wallGrad = ctx.createLinearGradient(0, 0, 0, boxH * 0.6);
+  wallGrad.addColorStop(0, 'rgba(25, 20, 35, 0.4)');
+  wallGrad.addColorStop(0.3, 'rgba(35, 28, 45, 0.3)');
+  wallGrad.addColorStop(0.7, 'rgba(45, 38, 55, 0.2)');
+  wallGrad.addColorStop(1, 'rgba(55, 48, 65, 0.1)');
+  ctx.fillStyle = wallGrad;
+  ctx.fillRect(0, 0, cssW, boxH * 0.6);
+
+  // Узор обоев (викторианский орнамент)
+  for (let i = 0; i < 30; i++) {
+    const x = (i * 28 + scrollX * 0.01) % cssW;
+    const y = (i * 13 + 8) % (boxH * 0.4) + boxH * 0.05;
+    const alpha = 0.03 + Math.sin(i * 0.5 + scrollX * 0.005) * 0.02;
+    ctx.fillStyle = `rgba(80, 70, 100, ${alpha})`;
+    // Цветочный узор
+    ctx.beginPath();
+    for (let j = 0; j < 6; j++) {
+      const angle = j / 6 * Math.PI * 2 + i * 0.3;
+      const r = 2 + Math.sin(i * 0.7 + j * 0.5) * 1;
+      ctx.arc(x + Math.cos(angle) * r * 1.5, y + Math.sin(angle) * r * 1.5, r * 0.5, 0, Math.PI * 2);
+    }
+    ctx.fill();
+    // Листья орнамента
+    if (i % 3 === 0) {
+      ctx.fillStyle = `rgba(60, 50, 80, ${alpha * 1.5})`;
+      ctx.beginPath();
+      ctx.ellipse(x + 12, y + 8, 3, 1.5, 0.5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.ellipse(x - 12, y - 8, 3, 1.5, -0.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  // ВИТРАЖИ (большие, детализированные)
+  const stainedGlassPositions = [
+    { x: 5, y: boxH * 0.08, w: 50, h: 80, color: '#8a2a2a', detail: true },
+    { x: cssW - 55, y: boxH * 0.08, w: 50, h: 80, color: '#2a4a8a', detail: true },
+    { x: 5, y: boxH * 0.38, w: 38, h: 60, color: '#4a2a6a', detail: false },
+    { x: cssW - 43, y: boxH * 0.38, w: 38, h: 60, color: '#6a4a2a', detail: false },
+  ];
+  for (const sg of stainedGlassPositions) {
+    ctx.save();
+    const glow = 0.15 + Math.sin(now * 0.0003 + sg.x + sg.y) * 0.08;
+    ctx.globalAlpha = glow;
+
+    // Рамка (викторианская)
+    ctx.strokeStyle = 'rgba(60, 50, 70, 0.4)';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(sg.x, sg.y, sg.w, sg.h);
+    // Внутренняя рамка
+    ctx.strokeStyle = 'rgba(80, 70, 90, 0.2)';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(sg.x + 4, sg.y + 4, sg.w - 8, sg.h - 8);
+
+    // Стекло
+    const grad = ctx.createRadialGradient(sg.x + sg.w / 2, sg.y + sg.h / 2, 5, sg.x + sg.w / 2, sg.y + sg.h / 2, Math.max(
+      sg.w, sg.h) / 2);
+    grad.addColorStop(0, sg.color + 'aa');
+    grad.addColorStop(0.3, sg.color + '88');
+    grad.addColorStop(0.7, sg.color + '55');
+    grad.addColorStop(1, sg.color + '22');
+    ctx.fillStyle = grad;
+    ctx.fillRect(sg.x + 5, sg.y + 5, sg.w - 10, sg.h - 10);
+
+    // Узор витража (секции)
+    ctx.strokeStyle = 'rgba(40, 30, 50, 0.2)';
+    ctx.lineWidth = 1;
+    // Вертикаль
+    ctx.beginPath();
+    ctx.moveTo(sg.x + sg.w / 2, sg.y + 5);
+    ctx.lineTo(sg.x + sg.w / 2, sg.y + sg.h - 5);
+    ctx.stroke();
+    // Горизонталь
+    ctx.beginPath();
+    ctx.moveTo(sg.x + 5, sg.y + sg.h / 2);
+    ctx.lineTo(sg.x + sg.w - 5, sg.y + sg.h / 2);
+    ctx.stroke();
+    // Арка
+    ctx.beginPath();
+    ctx.moveTo(sg.x + 5, sg.y + 5);
+    ctx.quadraticCurveTo(sg.x + sg.w / 2, sg.y - 12, sg.x + sg.w - 5, sg.y + 5);
+    ctx.stroke();
+    // Диагонали
+    ctx.beginPath();
+    ctx.moveTo(sg.x + 5, sg.y + 5);
+    ctx.lineTo(sg.x + sg.w - 5, sg.y + sg.h - 5);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(sg.x + sg.w - 5, sg.y + 5);
+    ctx.lineTo(sg.x + 5, sg.y + sg.h - 5);
+    ctx.stroke();
+
+    if (sg.detail) {
+      // Дополнительные секции
+      for (let i = 1; i < 4; i++) {
+        const x = sg.x + sg.w * i / 4;
+        ctx.beginPath();
+        ctx.moveTo(x, sg.y + 5);
+        ctx.lineTo(x, sg.y + sg.h - 5);
+        ctx.stroke();
+      }
+      // Символ в центре (розетка)
+      ctx.fillStyle = 'rgba(200, 200, 220, 0.15)';
+      ctx.font = '20px serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('✦', sg.x + sg.w / 2, sg.y + sg.h / 2 + 2);
+      // Маленькие символы по углам
+      ctx.font = '12px serif';
+      ctx.fillStyle = 'rgba(200, 200, 220, 0.08)';
+      ctx.fillText('✧', sg.x + 12, sg.y + 12);
+      ctx.fillText('✧', sg.x + sg.w - 12, sg.y + 12);
+      ctx.fillText('✧', sg.x + 12, sg.y + sg.h - 12);
+      ctx.fillText('✧', sg.x + sg.w - 12, sg.y + sg.h - 12);
+    }
+
+    ctx.globalAlpha = 1;
+    ctx.restore();
+  }
+
+  // ЛЮСТРЫ (викторианские)
+  for (let i = 0; i < 2; i++) {
+    const lx = cssW * (0.25 + i * 0.5);
+    const ly = boxH * 0.02 + Math.sin(i * 0.7 + now * 0.0001) * 5;
+
+    ctx.save();
+    // Цепь
+    ctx.strokeStyle = 'rgba(60, 50, 70, 0.2)';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([3, 5]);
+    ctx.beginPath();
+    ctx.moveTo(lx, 0);
+    ctx.lineTo(lx, ly + 10);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Основная люстра
+    ctx.fillStyle = 'rgba(60, 50, 70, 0.15)';
+    ctx.beginPath();
+    ctx.arc(lx, ly + 15, 25, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(80, 70, 90, 0.2)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    // Свечи на люстре
+    for (let j = 0; j < 6; j++) {
+      const angle = j / 6 * Math.PI * 2 + now * 0.0001;
+      const cx = lx + Math.cos(angle) * 20;
+      const cy = ly + 15 + Math.sin(angle) * 15;
+      // Свеча
+      ctx.fillStyle = 'rgba(200, 180, 160, 0.2)';
+      ctx.fillRect(cx - 2, cy - 8, 4, 12);
+      // Огонёк
+      const flicker = 0.7 + Math.sin(now * 0.005 + j * 1.5 + i) * 0.2;
+      const grad = ctx.createRadialGradient(cx, cy - 12, 2, cx, cy - 12, 10);
+      grad.addColorStop(0, `rgba(255, 200, 100, ${0.4 * flicker})`);
+      grad.addColorStop(0.5, `rgba(255, 150, 50, ${0.2 * flicker})`);
+      grad.addColorStop(1, 'rgba(255, 100, 20, 0)');
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.arc(cx, cy - 12, 10, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  // КОВРЫ на полу (викторианские)
+  for (let i = 0; i < 2; i++) {
+    const cx = cssW * (0.2 + i * 0.6);
+    const cy = boxH * 0.58;
+    ctx.save();
+    ctx.globalAlpha = 0.06 + Math.sin(i * 0.5 + now * 0.0001) * 0.02;
+    // Овальный ковёр
+    ctx.fillStyle = '#4a2a3a';
+    ctx.beginPath();
+    ctx.ellipse(cx, cy, 60, 20, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // Узор на ковре
+    ctx.strokeStyle = 'rgba(80, 50, 60, 0.2)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.ellipse(cx, cy, 45, 14, 0, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.ellipse(cx, cy, 30, 8, 0, 0, Math.PI * 2);
+    ctx.stroke();
+    // Центральный узор
+    ctx.fillStyle = 'rgba(80, 50, 60, 0.15)';
+    ctx.font = '14px serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('✤', cx, cy);
+    ctx.globalAlpha = 1;
+    ctx.restore();
+  }
+
+  // КОЛОННЫ с капителями (викторианские)
+  for (let i = 0; i < 3; i++) {
+    const x = cssW * (0.12 + i * 0.38);
+    const colY = boxH * 0.55;
+    const colH = boxH * 0.5;
+
+    ctx.save();
+    // Тень
+    ctx.fillStyle = 'rgba(0,0,0,0.08)';
+    ctx.fillRect(x - 14, colY - colH + 10, 28, colH - 10);
+
+    // Основная колонна
+    const grad = ctx.createLinearGradient(x - 14, 0, x + 14, 0);
+    grad.addColorStop(0, '#1a1525');
+    grad.addColorStop(0.15, '#2a2035');
+    grad.addColorStop(0.3, '#3a3045');
+    grad.addColorStop(0.5, '#4a4055');
+    grad.addColorStop(0.7, '#3a3045');
+    grad.addColorStop(0.85, '#2a2035');
+    grad.addColorStop(1, '#1a1525');
+    ctx.fillStyle = grad;
+    ctx.fillRect(x - 14, colY - colH, 28, colH);
+
+    // Каннелюры
+    ctx.strokeStyle = 'rgba(60, 50, 70, 0.1)';
+    ctx.lineWidth = 0.5;
+    for (let j = -8; j <= 8; j += 3) {
+      ctx.beginPath();
+      ctx.moveTo(x + j, colY - colH + 20);
+      ctx.lineTo(x + j, colY - 20);
+      ctx.stroke();
+    }
+
+    // Капитель (коринфская)
+    ctx.fillStyle = '#2a2035';
+    // Основание капители
+    ctx.fillRect(x - 18, colY - colH - 4, 36, 5);
+    ctx.fillRect(x - 20, colY - colH - 8, 40, 4);
+    // Волюты
+    ctx.fillStyle = 'rgba(60, 50, 70, 0.2)';
+    for (let side = -1; side <= 1; side += 2) {
+      ctx.beginPath();
+      ctx.arc(x + side * 18, colY - colH - 6, 6, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(x + side * 14, colY - colH - 14, 4, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    // Акантовые листья (упрощённо)
+    ctx.strokeStyle = 'rgba(80, 70, 90, 0.15)';
+    ctx.lineWidth = 1;
+    for (let j = 0; j < 4; j++) {
+      const angle = j / 4 * Math.PI * 2 + 0.2;
+      const lx = x + Math.cos(angle) * 16;
+      const ly = colY - colH - 2 + Math.sin(angle) * 8;
+      ctx.beginPath();
+      ctx.moveTo(lx, ly);
+      ctx.quadraticCurveTo(lx + Math.cos(angle + 0.5) * 8, ly - 8, lx + Math.cos(angle + 0.7) * 12, ly - 4);
+      ctx.stroke();
+    }
+
+    // База колонны
+    ctx.fillStyle = '#1a1525';
+    ctx.fillRect(x - 16, colY - 2, 32, 4);
+    ctx.fillRect(x - 18, colY + 3, 36, 4);
+    // Ступеньки базы
+    ctx.fillStyle = 'rgba(40, 35, 50, 0.3)';
+    ctx.fillRect(x - 12, colY + 2, 24, 2);
+    ctx.fillRect(x - 14, colY + 6, 28, 2);
+
+    // Световой блик
+    ctx.fillStyle = 'rgba(200, 200, 220, 0.02)';
+    ctx.fillRect(x - 3, colY - colH + 15, 4, colH - 35);
+
+    ctx.restore();
+  }
+
+  // СКЕЛЕТЫ на стенах (декор)
+  for (let i = 0; i < 5; i++) {
+    const x = 10 + i * 80 + Math.sin(i * 2.1 + scrollX * 0.01 + now * 0.0001) * 25;
+    const y = boxH * 0.08 + Math.sin(i * 1.7 + now * 0.0002) * 12 + i * 25;
+    ctx.save();
+    const alpha = 0.1 + Math.sin(i * 1.3 + now * 0.0003) * 0.06;
+    ctx.globalAlpha = alpha;
+    ctx.font = '22px serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('💀', x, y);
+    if (i % 2 === 0) {
+      ctx.font = '16px serif';
+      ctx.fillText('☠️', x + 28, y - 8);
+    }
+    ctx.globalAlpha = 1;
+    ctx.restore();
+  }
+
+  // ЛЕТУЧИЕ МЫШИ
+  for (let i = 0; i < 4; i++) {
+    const x = (i * 180 + scrollX * 0.02 - now * 0.03 * (0.5 + i * 0.1)) % cssW;
+    const y = boxH * 0.04 + Math.sin(i * 1.7 + now * 0.0015) * 35 + i * 25;
+    ctx.save();
+    const alpha = 0.06 + Math.sin(i * 0.5 + now * 0.0008) * 0.04;
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = '#1a1a2a';
+    const size = 3 + Math.sin(i * 0.7 + now * 0.001) * 1.5;
+    // Тело
+    ctx.beginPath();
+    ctx.ellipse(x, y, size * 2, size, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // Крылья
+    const wingFlap = Math.sin(now * 0.004 + i * 1.2) * 0.3 + 0.5;
+    ctx.beginPath();
+    ctx.moveTo(x - size * 2, y);
+    ctx.quadraticCurveTo(x - size * 4 * wingFlap, y - size * 2, x - size * 1.8, y - size * 0.5);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(x + size * 2, y);
+    ctx.quadraticCurveTo(x + size * 4 * wingFlap, y - size * 2, x + size * 1.8, y - size * 0.5);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+    ctx.restore();
+  }
+
+  // Пол с плиткой (викторианский)
+  const floorGrad = ctx.createLinearGradient(0, boxH * 0.55, 0, boxH);
+  floorGrad.addColorStop(0, '#3a3045');
+  floorGrad.addColorStop(0.15, '#2a2035');
+  floorGrad.addColorStop(0.4, '#1a1525');
+  floorGrad.addColorStop(0.7, '#0e0a18');
+  floorGrad.addColorStop(1, '#060408');
+  ctx.fillStyle = floorGrad;
+  ctx.fillRect(0, boxH * 0.55, cssW, boxH * 0.45);
+
+  // Плитки с узором (шахматный узор)
+  const tileSize = 30;
+  const tileOffset = (scrollX * 0.5 - now * 0.002) % tileSize;
+  for (let x = -tileOffset; x < cssW + tileSize; x += tileSize) {
+    for (let y = boxH * 0.55 - tileOffset * 0.3; y < boxH + tileSize; y += tileSize) {
+      const row = Math.floor((y - boxH * 0.55) / tileSize);
+      const col = Math.floor((x + tileOffset) / tileSize);
+      const isDark = (row + col) % 2 === 0;
+      ctx.fillStyle = isDark ? 'rgba(40, 35, 50, 0.15)' : 'rgba(50, 45, 60, 0.08)';
+      ctx.fillRect(x, y, tileSize, tileSize);
+    }
+  }
+
+  // Границы плиток
+  ctx.strokeStyle = 'rgba(60, 50, 70, 0.05)';
+  ctx.lineWidth = 0.5;
+  for (let x = -tileOffset; x < cssW + tileSize; x += tileSize) {
+    ctx.beginPath();
+    ctx.moveTo(x, boxH * 0.55);
+    ctx.lineTo(x, boxH);
+    ctx.stroke();
+  }
+  for (let y = boxH * 0.55 + (scrollX * 0.3 - now * 0.001) % tileSize; y < boxH + tileSize; y += tileSize) {
+    const alpha = 1 - (y - boxH * 0.55) / (boxH * 0.45) * 0.6;
+    ctx.strokeStyle = `rgba(60, 50, 70, ${0.05 * alpha})`;
+    ctx.beginPath();
+    ctx.moveTo(0, y);
+    ctx.lineTo(cssW, y);
+    ctx.stroke();
+  }
+
+  // === ПЛАТФОРМЫ - ВИКТОРИАНСКИЕ МРАМОРНЫЕ БАЛКОНЫ ===
+  for (let i = 0; i < activeLanes; i++) {
+    const ly = laneY(i) + 38;
+    const platH = 16;
+
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.35)';
+    ctx.fillRect(0, ly + platH, cssW, 7);
+
+    // Мраморная плита
+    const stoneGrad = ctx.createLinearGradient(0, ly - 4, 0, ly + platH);
+    stoneGrad.addColorStop(0, '#5e4c6e');
+    stoneGrad.addColorStop(0.2, '#463a54');
+    stoneGrad.addColorStop(0.6, '#2e2740');
+    stoneGrad.addColorStop(1, '#18131f');
+    ctx.fillStyle = stoneGrad;
+    ctx.fillRect(0, ly - 4, cssW, platH + 4);
+
+    ctx.fillStyle = 'rgba(210, 195, 225, 0.18)';
+    ctx.fillRect(0, ly - 4, cssW, 2);
+
+    // Мраморные прожилки
+    ctx.strokeStyle = 'rgba(130, 110, 150, 0.15)';
+    ctx.lineWidth = 0.6;
+    for (let j = 0; j < 8; j++) {
+      const x = (((j * 60 - scrollX * 0.5 + i * 30) % cssW) + cssW) % cssW;
+      ctx.beginPath();
+      ctx.moveTo(x, ly - 4);
+      ctx.quadraticCurveTo(x + 10, ly + platH / 2, x - 5, ly + platH);
+      ctx.stroke();
+    }
+
+    // Плитка по переднему краю (шахматный узор)
+    const tileW = 20;
+    const tileOff = (scrollX * 0.5 + i * 10) % (tileW * 2);
+    for (let x = -tileOff; x < cssW + tileW * 2; x += tileW * 2) {
+      ctx.fillStyle = 'rgba(230, 220, 235, 0.06)';
+      ctx.fillRect(x, ly + platH - 4, tileW, 4);
+    }
+    ctx.strokeStyle = 'rgba(20, 16, 25, 0.3)';
+    ctx.lineWidth = 0.5;
+    for (let x = -tileOff; x < cssW + tileW * 2; x += tileW) {
+      ctx.beginPath();
+      ctx.moveTo(x, ly + platH - 4);
+      ctx.lineTo(x, ly + platH);
+      ctx.stroke();
+    }
+
+    // Кованое ограждение балкона
+    const railSpacing = 24;
+    const railOff = (scrollX * 0.5 + i * 11) % railSpacing;
+    ctx.strokeStyle = 'rgba(15, 12, 10, 0.45)';
+    ctx.lineWidth = 1.4;
+    ctx.beginPath();
+    ctx.moveTo(0, ly - 10);
+    ctx.lineTo(cssW, ly - 10);
+    ctx.stroke();
+    for (let x = -railOff; x < cssW + railSpacing; x += railSpacing) {
+      ctx.beginPath();
+      ctx.moveTo(x, ly - 10);
+      ctx.lineTo(x, ly - 4);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(x, ly - 10, 2, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+  }
+}
+
+// =====================================================================
+// ОБРАБОТКА МОНСТРОВ
+// =====================================================================
+// Яд, замедление и споры не должны появляться на одной X-плоскости сразу на
+// нескольких полосах — иначе игрок не сможет увернуться сменой полосы.
+// Торнадо это правило не касается — оно намеренно перекрывает сразу несколько полос.
+const HAZARD_ZONE_LABELS = ['☁️ СПОРЫ', '🌱 ЗАМЕДЛЕНИЕ', '☠️ ЯД'];
+function hasHazardZoneConflict(cssW) {
+  return warningZones.some(z => z.life > 0 && !z.isTornado && z.x > cssW - 40 &&
+    HAZARD_ZONE_LABELS.includes(z.label));
+}
+
+function handleMonsterAbility(o, now, cssW) {
+  if (o.dead || o.harmless || (effects.invisible && now < effects.invisible)) return;
+  const mobDef = roster.find(m => m.key === o.key);
+  if (!mobDef || !mobDef.specialAbility) return;
+
+  if (o.charging && now > o.charging) {
+    o.charging = null;
+
+    if (mobDef.specialAbility === 'sand_tornado') {
+      // Торнадо - движется справа налево. life считаем от ширины экрана,
+      // чтобы зона реально долетала до игрока, а не гасла на полпути
+      const lanes = [o.lane];
+      if (o.lane > 0) lanes.push(o.lane - 1);
+      if (o.lane < activeLanes - 1) lanes.push(o.lane + 1);
+      const tornadoSpeed = 2.5;
+      const tornadoLife = Math.ceil((cssW + 120) / tornadoSpeed);
+
+      for (const lane of lanes) {
+        warningZones.push({
+          x: cssW + 20,
+          lane: lane,
+          width: 70,
+          life: tornadoLife,
+          color: 'rgba(241, 196, 15, 0.4)',
+          label: '🌪️ СМЕРЧ',
+          isTornado: true,
+          speed: tornadoSpeed
+        });
+      }
+      spawnBurst(o.x, laneY(o.lane), '#f1c40f');
+      spawnFloat(o.x, laneY(o.lane) - 30, '🌪️ ПЕСЧАНЫЙ СМЕРЧ!', '#f1c40f');
+    } else if (mobDef.specialAbility === 'spore_cloud' && !hasHazardZoneConflict(cssW)) {
+      // Споры - движутся справа налево, в полосе моба (игрок должен увернуться сменой полосы)
+      const sporeSpeed = 1.8;
+      warningZones.push({
+        x: cssW + 20,
+        lane: o.lane,
+        width: 90,
+        life: Math.ceil((cssW + 120) / sporeSpeed),
+        color: 'rgba(155, 89, 182, 0.3)',
+        label: '☁️ СПОРЫ',
+        speed: sporeSpeed
+      });
+      spawnBurst(o.x, laneY(o.lane), '#9b59b6');
+      spawnFloat(o.x, laneY(o.lane) - 20, '☁️ ЯДОВИТЫЕ СПОРЫ!', '#9b59b6');
+    } else if (mobDef.specialAbility === 'root_slam' && !hasHazardZoneConflict(cssW)) {
+      const rootSpeed = 2.0;
+      warningZones.push({
+        x: cssW + 20,
+        lane: o.lane,
+        width: 60,
+        life: Math.ceil((cssW + 120) / rootSpeed),
+        color: 'rgba(46, 204, 113, 0.3)',
+        label: '🌱 ЗАМЕДЛЕНИЕ',
+        speed: rootSpeed
+      });
+      spawnBurst(o.x, laneY(o.lane), '#2ecc71');
+      spawnFloat(o.x, laneY(o.lane) - 20, '🌱 УДАР КОРНЯМИ!', '#2ecc71');
+    } else if (mobDef.specialAbility === 'spray_venom' && !hasHazardZoneConflict(cssW)) {
+      const lanes = [o.lane];
+      if (o.lane > 0) lanes.push(o.lane - 1);
+      if (o.lane < activeLanes - 1) lanes.push(o.lane + 1);
+      const venomSpeed = 2.2;
+      // Смещаем плевок по оси X для каждой полосы, чтобы яд не вставал единой непроходимой стеной
+      lanes.forEach((lane, i) => {
+        const startX = cssW + 20 + i * 70 + rnd(-15, 15);
+        warningZones.push({
+          x: startX,
+          lane: lane,
+          width: 70,
+          life: Math.ceil((startX + 120) / venomSpeed),
+          color: 'rgba(46, 204, 113, 0.3)',
+          label: '☠️ ЯД',
+          speed: venomSpeed
+        });
+      });
+      spawnBurst(o.x, laneY(o.lane), '#27ae60');
+      spawnFloat(o.x, laneY(o.lane) - 20, '☠️ ЯДОВИТЫЙ ПЛЕВОК!', '#27ae60');
+    } else if (mobDef.specialAbility === 'shoot_bone') {
+      // Скелет-стрелок стреляет костью
+      const bone = {
+        kind: 'bone_shot',
+        lane: o.lane,
+        x: o.x - 10,
+        dead: false,
+        speed: speed + 2.5,
+        em: '🦴'
+      };
+      obstacles.push(bone);
+      spawnBurst(o.x, laneY(o.lane), '#d4c4b0');
+      spawnFloat(o.x, laneY(o.lane) - 20, '🦴 КОСТЯНАЯ СТРЕЛА!', '#d4c4b0');
+    } else if (mobDef.specialAbility === 'deer_rush') {
+      // Олень не телепортируется, а совершает рывок в сторону игрока —
+      // это обычное препятствие, от него можно увернуться прыжком или сменой полосы
+      o.burst = true;
+      o.burstAt = now + 260;
+      spawnBurst(o.x, laneY(o.lane), '#3498db');
+      spawnFloat(o.x, laneY(o.lane) - 20, '🦌 РЫВОК!', '#3498db');
+    } else if (mobDef.specialAbility === 'summon_skeleton') {
+      const skelly = {
+        kind: 'mob',
+        key: 'skeleton',
+        em: '💀',
+        lane: o.lane,
+        x: o.x + 20,
+        power: 1,
+        hp: 2,
+        maxHp: 2,
+        dead: false,
+        isSummon: true,
+        immuneClear: true,
+        shield: 2,
+        mobAbility: { kind: 'bite', abEm: '🛡️', label: 'Щит' }
+      };
+      obstacles.push(skelly);
+      spawnBurst(o.x, laneY(o.lane) + 10, '#f39c12');
+      spawnFloat(o.x, laneY(o.lane) - 20, '🦴 ПРИЗВАН СКЕЛЕТ!', '#f39c12');
+    } else if (mobDef.specialAbility === 'life_steal') {
+      if (player.currentLane === o.lane && Math.abs(player.x - o.x) < 40) {
+        if (effects.fly && now < effects.fly) {
+          spawnBurst(o.x, laneY(o.lane), '#ffd700');
+          spawnFloat(o.x, laneY(o.lane) - 20, '✨ НЕУЯЗВИМ!', '#ffd700');
+        } else {
+          o.hp = Math.min((o.hp || 0) + 1, o.maxHp || 4);
+          hp -= 1;
+          player.hitFlash = 14;
+          spawnFloat(o.x, laneY(o.lane) - 20, '🩸 +1 HP ВАМПИРУ', '#e74c3c');
+          updateHud();
+          if (hp <= 0) endGame();
+        }
+      }
+    } else if (mobDef.specialAbility === 'chain_pull') {
+      if (player.currentLane === o.lane && o.x > player.x - 30) {
+        if (effects.fly && now < effects.fly) {
+          spawnBurst(o.x, laneY(o.lane), '#ffd700');
+          spawnFloat(o.x, laneY(o.lane) - 20, '✨ НЕУЯЗВИМ!', '#ffd700');
+        } else {
+          const startX = player.x;
+          const pullDist = Math.min(30, o.x - player.x);
+          player.x += pullDist;
+          // Явное лассо: верёвка от голема резко затягивается на игроке
+          abilityEffects.push({
+            kind: 'chain_pull',
+            lane: o.lane,
+            golemX: o.x,
+            fromX: startX,
+            toX: player.x,
+            color: '#e67e22',
+            life: 24,
+            maxLife: 24,
+            progress: 0
+          });
+          spawnBurst(player.x, player.y, '#e67e22');
+          spawnFloat(player.x, player.y - 20, '🪢 АРКАН ЗАТЯНУЛ!', '#e67e22');
+          hp -= 1;
+          player.hitFlash = 14;
+          updateHud();
+          if (hp <= 0) endGame();
+        }
+      }
+    }
+  }
+
+  if (!o.charging && now - o.lastAbility > (o.abilityCooldown || 3000)) {
+    // Чем выше скорость игры, тем быстрее моб заряжает способность (меньше времени на предупреждение)
+    const chargeMs = Math.max(250, 600 - Math.min((speed - 3.4) * 90, 350));
+    o.charging = now + chargeMs;
+    o.lastAbility = now;
+    if (mobDef.specialAbility === 'chain_pull') {
+      spawnFloat(o.x, laneY(o.lane) - 30, '🪢 ЗАМАХ АРКАНОМ...', '#e67e22');
+    } else {
+      spawnFloat(o.x, laneY(o.lane) - 30, '⚡ ЗАРЯДКА...', '#f1c40f');
+    }
+  }
+}
+
+function handlePoison(now) {
+  if (player.poisonTicks > 0 && now > player._lastPoisonTick + 800) {
+    player._lastPoisonTick = now;
+    player.poisonTicks--;
+    if (effects.fly && now < effects.fly) return;
+    hp -= 1;
+    player.hitFlash = 10;
+    spawnFloat(player.x, player.y - 30, '☠️ -1 HP (ЯД)', '#27ae60');
+    updateHud();
+    if (hp <= 0) endGame();
+  }
+}
+
+// =====================================================================
+// СПАВН ОБЪЕКТОВ
+// =====================================================================
+function spawnObstacle() {
+  const roll = Math.random();
+  const lane = rnd(0, activeLanes - 1);
+  const role = ROLES[selectedRole];
+
+  // === ВАЗЫ / СУНДУКИ (лут) ===
+  // Пустыня — вазы, остальные локации — сундуки. Содержимое открывается случайно
+  // при подборе: талисман, алмаз, энергия, редко — сердечко, либо особый ресурс роли
+  // (кристалл волшебнику, шестерёнка изобретателю, раковина русалке, светящиеся в ночи исповеднице и т.д.)
+  if (roll < 0.20) {
+    obstacles.push({ kind: 'pickup', special: 'lootbox', em: theme.lootIcon || '📦', lane, x: canvasCssW() + 20 });
+    return;
+  }
+
+  // === ПРЕПЯТСТВИЯ С РОЛЕВЫМ ПРОХОДОМ ===
+  // Чем выше скорость игры, тем реже выпадают обычные препятствия и чаще — мобы
+  const mobBoost = Math.min((speed - 3.4) * 0.06, 0.15);
+  const obstacleCeil = Math.max(0.20, 0.35 - mobBoost);
+  if (roll < obstacleCeil) {
+    const obstacleType = rnd(0, 4);
+    const lane = rnd(0, activeLanes - 1);
+
+    if (obstacleType === 0) {
+      obstacles.push({
+        kind: 'web_obstacle',
+        lane,
+        x: canvasCssW() + 20,
+        em: '🕸️',
+        label: 'Паутина',
+        naturalRole: 'vamp',
+        naturalAction: (o) => { o.dead = true;
+          spawnBurst(o.x, laneY(o.lane), '#b6394a');
+          spawnFloat(o.x, laneY(o.lane), '🩸 Вампир прокусил паутину!', '#b6394a'); return true; },
+        canBeDestroyedByAbility: true
+      });
+      return;
+    }
+    if (obstacleType === 1) {
+      obstacles.push({
+        kind: 'firewall_obstacle',
+        lane,
+        x: canvasCssW() + 20,
+        em: '🔥',
+        label: 'Стена огня',
+        naturalRole: 'fire',
+        naturalAction: (o) => { o.dead = true;
+          spawnBurst(o.x, laneY(o.lane), '#e2a23f');
+          spawnFloat(o.x, laneY(o.lane), '✨ Фея прошла сквозь огонь!', '#e2a23f'); return true; },
+        canBeDestroyedByAbility: true
+      });
+      return;
+    }
+    if (obstacleType === 2) {
+      obstacles.push({
+        kind: 'ice_obstacle',
+        lane,
+        x: canvasCssW() + 20,
+        em: '🧊',
+        label: 'Ледяной мост',
+        naturalRole: 'wolf',
+        naturalAction: (o) => { o.dead = true;
+          spawnBurst(o.x, laneY(o.lane), '#8a7a5a');
+          spawnFloat(o.x, laneY(o.lane), '💨 Оборотень пронёсся по льду!', '#8a7a5a'); return true; },
+        canBeDestroyedByAbility: true
+      });
+      return;
+    }
+    if (obstacleType === 3) {
+      obstacles.push({
+        kind: 'sand_obstacle',
+        lane,
+        x: canvasCssW() + 20,
+        em: '🏝️',
+        label: 'Зыбучие пески',
+        naturalRole: 'merm',
+        naturalAction: (o) => { o.dead = true;
+          spawnBurst(o.x, laneY(o.lane), '#6fa8c9');
+          spawnFloat(o.x, laneY(o.lane), '🌊 Русалка проплыла над песками!', '#6fa8c9'); return true; },
+        canBeDestroyedByAbility: true
+      });
+      return;
+    }
+    if (obstacleType === 4) {
+      obstacles.push({
+        kind: 'rune_obstacle',
+        lane,
+        x: canvasCssW() + 20,
+        em: '🧱',
+        label: 'Магическая кладка',
+        naturalRole: 'mage',
+        naturalAction: (o) => { o.dead = true;
+          spawnBurst(o.x, laneY(o.lane), '#9a7fd1');
+          spawnFloat(o.x, laneY(o.lane), '🌀 Волшебник пробил кладку!', '#9a7fd1'); return true; },
+        canBeDestroyedByAbility: true
+      });
+      return;
+    }
+  }
+
+  // === МОБЫ ===
+  const total = roster.reduce((s, m) => s + m.w, 0);
+  let r = Math.random() * total,
+    picked = roster[0];
+  for (const m of roster) { if ((r -= m.w) < 0) { picked = m; break; } }
+
+  const o = {
+    kind: picked.kind || 'mob',
+    key: picked.key,
+    em: picked.em,
+    lane: lane,
+    x: canvasCssW() + 20,
+    power: picked.power || 1,
+    hp: picked.hp || 2,
+    maxHp: picked.hp || 2,
+    shield: 0,
+    dead: false,
+    isSummon: false,
+    stealsDiamond: !!picked.stealsDiamond,
+    immuneClear: !!picked.immuneClear,
+    pierceShield: !!picked.pierceShield,
+    noJumpDodge: !!picked.noJumpDodge,
+    venom: !!picked.venom,
+    heavyHit: !!picked.heavyHit,
+    teleportDodge: !!picked.teleportDodge || false,
+    specialAbility: picked.specialAbility || null,
+    abilityCooldown: picked.cooldown || 0,
+    lastAbility: performance.now() - (picked.cooldown || 3000) + rnd(150, 400),
+    charging: null,
+    mobAbility: picked.mobAbility || { kind: 'bite', abEm: '⚔️', label: 'Атака' },
+    nextShot: picked.kind === 'dragon' ? performance.now() + rnd(500, 1000) : 0,
+    nextWeb: picked.key === 'shadow' ? performance.now() + rnd(1600, 2600) : 0,
+    nextSpit: picked.key === 'scorpion' ? performance.now() + rnd(900, 1600) : 0,
+    nextSlam: picked.key === 'troll' ? performance.now() + rnd(1400, 2200) : 0,
+  };
+  obstacles.push(o);
+}
+
+// =====================================================================
+// ЛУТ ИЗ ВАЗ (пустыня) И СУНДУКОВ (другие локации)
+// =====================================================================
+function grantRoleResource(resource, o) {
+  const role = ROLES[selectedRole];
+  if (resource === 'crystal') { mageCrystals++;
+    spawnBurst(o.x, laneY(o.lane), '#9a7fd1');
+    spawnFloat(o.x, laneY(o.lane), '+1💠', '#9a7fd1'); }
+  else if (resource === 'gear') { gear++;
+    spawnBurst(o.x, laneY(o.lane), '#7f95a8');
+    spawnFloat(o.x, laneY(o.lane), '+1⚙️', '#7f95a8'); }
+  else if (resource === 'shell') { shells++;
+    spawnBurst(o.x, laneY(o.lane), '#e8b4c8');
+    spawnFloat(o.x, laneY(o.lane), '+1🐚', '#e8b4c8'); }
+  else if (resource === 'blood') { blood++;
+    spawnBurst(o.x, laneY(o.lane), '#d1495b');
+    spawnFloat(o.x, laneY(o.lane), '+1🩸', '#d1495b'); }
+  else if (resource === 'mark') { mordMarks++;
+    spawnBurst(o.x, laneY(o.lane), '#c9556b');
+    spawnFloat(o.x, laneY(o.lane), mordMarks >= role.cost ? '🔴 ВТОРОЕ ДЫХАНИЕ ГОТОВО!' : '+1🔴', '#c9556b'); }
+  else if (resource === 'butterfly') {
+    if (butterflies >= MAX_BUTTERFLIES) {
+      // Инвентарь бабочек уже полон (макс 3) — находка превращается в алмаз
+      diamonds++;
+      spawnBurst(o.x, laneY(o.lane), theme.accent);
+      spawnFloat(o.x, laneY(o.lane), 'Уже 3🦋! +1💎', theme.accent);
+    } else {
+      butterflies++;
+      spawnBurst(o.x, laneY(o.lane), '#c77dc9');
+      spawnFloat(o.x, laneY(o.lane), butterflies >= MAX_BUTTERFLIES ? '🦋 АНТИ-АКУМА ГОТОВА!' : '+1🦋', '#c77dc9');
+    }
+  }
+  else if (resource === 'firefly') {
+    if (effects.fireflyOrbit) {
+      // Светящиеся в ночи не копятся — если уже есть один, находка превращается в алмаз
+      diamonds++;
+      spawnBurst(o.x, laneY(o.lane), theme.accent);
+      spawnFloat(o.x, laneY(o.lane), 'Уже под крылом! +1💎', theme.accent);
+    } else {
+      effects.shield = Infinity;
+      effects.fireflyOrbit = true;
+      spawnBurst(o.x, laneY(o.lane), '#f2d675');
+      spawnFloat(o.x, laneY(o.lane), '🌟 Светящиеся в ночи взяли вас под крыло!', '#f2d675');
+    }
+  }
+  updateHud();
+}
+
+function rollVaseLoot(o) {
+  const role = ROLES[selectedRole];
+  const r = Math.random();
+
+  // 22% — особый ресурс роли, если у роли он есть
+  if (r < 0.22 && role.resource) {
+    grantRoleResource(role.resource, o);
+    return;
+  }
+  // 8% — редкое сердечко (если нужно)
+  if (r < 0.30 && hp < MAX_HP) {
+    hp = Math.min(hp + 1, MAX_HP);
+    spawnBurst(o.x, laneY(o.lane), '#e08a92');
+    spawnFloat(o.x, laneY(o.lane), '+1❤️', '#e08a92');
+    updateHud();
+    return;
+  }
+  // 20% — энергия
+  if (r < 0.50) {
+    energy = Math.min(energy + 1, MAX_ENERGY);
+    spawnBurst(o.x, laneY(o.lane), '#9a7fd1');
+    spawnFloat(o.x, laneY(o.lane), '+1⚡', '#9a7fd1');
+    updateHud();
+    return;
+  }
+  // 25% — алмаз
+  if (r < 0.75) {
+    diamonds++;
+    spawnBurst(o.x, laneY(o.lane), theme.accent);
+    spawnFloat(o.x, laneY(o.lane), '+1💎', theme.accent);
+    updateHud();
+    return;
+  }
+  // остаток (и запасной исход, если сердечко/ресурс роли были недоступны) — талисман
+  const t = TALISMANS[rnd(0, TALISMANS.length - 1)];
+  grantTalisman(t, o.x, o.lane);
+}
+
+function killMob(o) {
+  if (o.heads > 1) { o.heads--;
+    return false; }
+  o.dead = true;
+  return true;
+}
+
+// =====================================================================
+// ОБРАБОТКА СТОЛКНОВЕНИЙ
+// =====================================================================
+function resolveHit(o) {
+  const role = ROLES[selectedRole];
+  const now = performance.now();
+
+  // --- ПОДБОР ПРЕДМЕТОВ ---
+  if (o.kind === 'pickup') {
+    o.dead = true;
+    if (o.talisman) { grantTalisman(o.talisman, o.x, o.lane); return; }
+    if (o.special === 'lootbox') { rollVaseLoot(o); return; }
+    if (o.special === 'crystal') {
+      mageCrystals++;
+      spawnBurst(o.x, laneY(o.lane), '#9a7fd1');
+      spawnFloat(o.x, laneY(o.lane), '+1💠', '#9a7fd1');
+      updateHud();
+      return;
+    }
+    if (o.special === 'shell') {
+      shells++;
+      spawnBurst(o.x, laneY(o.lane), '#e8b4c8');
+      spawnFloat(o.x, laneY(o.lane), '+1🐚', '#e8b4c8');
+      updateHud();
+      return;
+    }
+    if (o.special === 'mark') {
+      mordMarks++;
+      spawnBurst(o.x, laneY(o.lane), '#c9556b');
+      if (mordMarks >= role.cost) {
+        spawnFloat(o.x, laneY(o.lane), '🔴 ВТОРОЕ ДЫХАНИЕ ГОТОВО!', '#c9556b');
+      } else {
+        spawnFloat(o.x, laneY(o.lane), '+1🔴', '#c9556b');
+      }
+      updateHud();
+      return;
+    }
+    if (o.special === 'energy') {
+      energy = Math.min(energy + 1, MAX_ENERGY);
+      spawnBurst(o.x, laneY(o.lane), '#9a7fd1');
+      spawnFloat(o.x, laneY(o.lane), '+1⚡', '#9a7fd1');
+      updateHud();
+      return;
+    }
+    if (o.special === 'butterfly') {
+      if (butterflies >= MAX_BUTTERFLIES) {
+        diamonds++;
+        spawnBurst(o.x, laneY(o.lane), theme.accent);
+        spawnFloat(o.x, laneY(o.lane), 'Уже 3🦋! +1💎', theme.accent);
+      } else {
+        butterflies++;
+        spawnBurst(o.x, laneY(o.lane), '#c77dc9');
+        spawnFloat(o.x, laneY(o.lane), butterflies >= MAX_BUTTERFLIES ? '🦋 АНТИ-АКУМА ГОТОВА!' : '+1🦋', '#c77dc9');
+      }
+      updateHud();
+      return;
+    }
+    if (o.special === 'gear') {
+      gear++;
+      spawnBurst(o.x, laneY(o.lane), '#7f95a8');
+      spawnFloat(o.x, laneY(o.lane), '+1⚙️', '#7f95a8');
+      updateHud();
+      return;
+    }
+    if (o.special === 'heal') {
+      hp = Math.min(hp + 1, MAX_HP);
+      spawnBurst(o.x, laneY(o.lane), '#e08a92');
+      spawnFloat(o.x, laneY(o.lane), '+1❤️', '#e08a92');
+      updateHud();
+      return;
+    }
+    if (o.special === 'shield') {
+      effects.shield = Infinity;
+      spawnBurst(o.x, laneY(o.lane), '#6fa8c9');
+      spawnFloat(o.x, laneY(o.lane), '🛡️ Щит!', '#6fa8c9');
+      return;
+    }
+    return;
+  }
+
+  // --- БЕЗОБИДНАЯ ОБЕЗЬЯНКА (талисман Обезьяны) — никогда не вредит игроку ---
+  if (o.harmless) {
+    o.dead = true;
+    spawnBurst(o.x, laneY(o.lane), '#c9a24b');
+    spawnFloat(o.x, laneY(o.lane), '🐒 Обезьянка ускакала прочь', '#c9a24b');
+    return;
+  }
+
+  // --- ЭНЧАНТИКС (Фея Огня) — полная неуязвимость ко всему ---
+  const flying = effects.fly && now < effects.fly;
+  if (flying) {
+    o.dead = true;
+    spawnBurst(o.x, laneY(o.lane), role.color);
+    spawnFloat(o.x, laneY(o.lane), '✨ НЕУЯЗВИМ!', '#ffd700');
+    return;
+  }
+
+  // --- ОТРАЖЕНИЕ МАГИИ (МордСит) ---
+  const reflectActive = effects.reflect && now < effects.reflect;
+  const magicProjectileKinds = ['fireball', 'venom', 'bone_shot', 'shockwave', 'web'];
+  if (reflectActive && magicProjectileKinds.includes(o.kind)) {
+    o.dead = true;
+    spawnBurst(o.x, laneY(o.lane), '#c9556b');
+    spawnFloat(o.x, laneY(o.lane), '🪞 ОТРАЖЕНО!', '#c9556b');
+    return;
+  }
+
+  // --- ПРЕПЯТСТВИЯ ---
+  if (o.kind && o.kind.endsWith('_obstacle')) {
+    resolveObstacleHit(o);
+    return;
+  }
+
+  // --- КОСТЯНАЯ СТРЕЛА ---
+  if (o.kind === 'bone_shot') {
+    if (o.lane === player.currentLane && Math.abs(o.x - player.x) < 20) {
+      o.dead = true;
+      hp -= 1;
+      player.hitFlash = 14;
+      spawnBurst(o.x, laneY(o.lane), '#d4c4b0');
+      spawnFloat(player.x, player.y - 20, '-1❤️', '#e74c3c');
+      updateHud();
+      if (hp <= 0) endGame();
+    }
+    return;
+  }
+
+  // --- ЗАЩИТА ИГРОКА ---
+  const invincible = effects.dash && now < effects.dash;
+  const shieldActive = effects.shield;
+
+  if (shieldActive && o.pierceShield) {
+    spawnFloat(o.x, laneY(o.lane), effects.fireflyOrbit ? '🌟 Светящиеся в ночи не спасли' : '🗿 Щит не спас', '#6fa8c9');
+    delete effects.shield;
+    delete effects.fireflyOrbit;
+  }
+
+  if (shieldActive && !o.pierceShield) {
+    delete effects.shield;
+    const wasFirefly = effects.fireflyOrbit;
+    delete effects.fireflyOrbit;
+    o.dead = true;
+    spawnBurst(o.x, laneY(o.lane), wasFirefly ? '#f2d675' : '#6fa8c9');
+    spawnFloat(o.x, laneY(o.lane), wasFirefly ? '🌟 Светящиеся в ночи угасли, приняв удар' : '🛡️ Щит поглотил удар', wasFirefly ? '#f2d675' : '#6fa8c9');
+    return;
+  }
+
+  if (invincible) {
+    o.dead = true;
+    spawnBurst(o.x, laneY(o.lane), role.color);
+    spawnFloat(o.x, laneY(o.lane), '💫 НЕУЯЗВИМ', '#ffd700');
+    return;
+  }
+
+  if (o.stealsDiamond && diamonds > 0) {
+    diamonds--;
+    o.dead = true;
+    spawnFloat(o.x, laneY(o.lane), '-1💎 СТАЩЕНО', '#c98a4b');
+    updateHud();
+    return;
+  }
+
+  // --- НАНЕСЕНИЕ УРОНА МОБУ (только если у игрока активна атакующая способность) ---
+  const hasAttackAbility =
+    (effects.bite_attack && now < effects.bite_attack) ||
+    (effects.wave_attack && now < effects.wave_attack) ||
+    (effects.jetshot_attack && now < effects.jetshot_attack) ||
+    (effects.dragonshot_attack && now < effects.dragonshot_attack) ||
+    (effects.magic_ball_attack && now < effects.magic_ball_attack) ||
+    (effects.gear_shot_attack && now < effects.gear_shot_attack) ||
+    (effects.volcanic_attack && now < effects.volcanic_attack) ||
+    (effects.orf_attack && now < effects.orf_attack) ||
+    (effects.butterfly_shot_attack && now < effects.butterfly_shot_attack) ||
+    (effects.antiakuma_attack && now < effects.antiakuma_attack) ||
+    (effects.dragonball_attack && now < effects.dragonball_attack) ||
+    (effects.reflect && now < effects.reflect) ||
+    (ally && (ally.kind === 'bite' || ally.kind === 'wave' || ally.kind === 'jetshot' || ally.kind === 'dragonshot' || ally.kind === 'volcanic' || ally.kind === 'orf'));
+
+  if (hasAttackAbility && o.hp !== undefined && o.hp > 0) {
+    const damage = (o.heavyHit ? 2 : 1);
+    o.hp -= damage;
+    spawnBurst(o.x, laneY(o.lane), '#e74c3c');
+    if (o.hp <= 0) {
+      o.dead = true;
+      updateHud();
+    } else {
+      spawnFloat(o.x, laneY(o.lane), `${o.hp}/${o.maxHp} HP`, '#e74c3c');
+    }
+    return;
+  }
+
+  // --- ЛЕВИТАЦИЯ (талисман Петуха) — мобы не могут коснуться игрока, кроме мумии (нужен двойной прыжок) ---
+  const levitating = effects.levitate && now < effects.levitate;
+  if (levitating && o.key !== 'mummy' && (o.kind === 'mob' || o.kind === 'dragon')) {
+    o.hitLocked = true;
+    spawnFloat(o.x, laneY(o.lane), '🪽 ПРОЛЁТ НАД МОБОМ', '#f2d675');
+    return;
+  }
+
+  // --- УРОН ИГРОКУ ---
+  if (o.hp === undefined) {
+    o.dead = true; // обычное препятствие без HP — исчезает после удара
+  } else {
+    o.hitLocked = true; // моба не задели атакой — он не уничтожен и летит дальше, но не бьёт повторно
+  }
+  const damage = o.heavyHit ? 2 : 1;
+  hp -= damage;
+  player.hitFlash = 14;
+  spawnBurst(o.x, laneY(o.lane), '#b6394a');
+  spawnFloat(player.x, player.y - 20, `-${damage}❤️`, '#e74c3c');
+  updateHud();
+
+  if (o.venom && abilityReady) {
+    abilityReady = false;
+    const btn = document.getElementById('ability-btn');
+    btn.classList.add('cooling');
+    const stunMs = 2200;
+    document.documentElement.style.setProperty('--ab-color', '#6f9573');
+    startCooldownRing(stunMs);
+    setTimeout(() => { abilityReady = true;
+      btn.classList.remove('cooling'); }, stunMs);
+    spawnFloat(o.x, laneY(o.lane) - 14, '☠️ ЯД СКОВАЛ', '#6f9573');
+  }
+
+  if (hp <= 0) endGame();
+}
+
+function resolveObstacleHit(o) {
+  const now = performance.now();
+  if (o.dead) return false;
+
+  if (o.naturalRole && selectedRole === o.naturalRole) {
+    return o.naturalAction(o);
+  }
+
+  if (o.canBeDestroyedByAbility) {
+    const hasAttackAbility =
+      (effects.bite_attack && now < effects.bite_attack) ||
+      (effects.wave_attack && now < effects.wave_attack) ||
+      (effects.jetshot_attack && now < effects.jetshot_attack) ||
+      (effects.dragonshot_attack && now < effects.dragonshot_attack) ||
+      (effects.magic_ball_attack && now < effects.magic_ball_attack) ||
+      (effects.gear_shot_attack && now < effects.gear_shot_attack) ||
+      (effects.volcanic_attack && now < effects.volcanic_attack) ||
+      (effects.orf_attack && now < effects.orf_attack) ||
+      (effects.butterfly_shot_attack && now < effects.butterfly_shot_attack) ||
+      (effects.antiakuma_attack && now < effects.antiakuma_attack) ||
+      (effects.dragonball_attack && now < effects.dragonball_attack) ||
+      (effects.smash && now < effects.smash) ||
+      (effects.reflect && now < effects.reflect) ||
+      (ally && (ally.kind === 'bite' || ally.kind === 'wave' || ally.kind === 'jetshot' || ally.kind === 'dragonshot' || ally.kind === 'volcanic' || ally.kind === 'orf'));
+
+    if (hasAttackAbility) {
+      o.dead = true;
+      spawnBurst(o.x, laneY(o.lane), '#e2a23f');
+      spawnFloat(o.x, laneY(o.lane), `💥 ${o.label} РАЗРУШЕНО!`, '#e2a23f');
+      return true;
+    }
+  }
+
+  hp -= 1;
+  player.hitFlash = 14;
+  o.hitLocked = true;
+  spawnBurst(o.x, laneY(o.lane), '#b6394a');
+  spawnFloat(o.x, laneY(o.lane), `💢 ${o.label} ПРЕГРАДИЛО ПУТЬ!`, '#b6394a');
+  updateHud();
+  if (hp <= 0) endGame();
+  return false;
+}
+
+function applyTalisman(t) {
+  spawnFloat(player.x, player.y - 16, `${t.em} ${t.label}!`, t.color);
+  if (t.effect === 'shield') effects.shield = Infinity;
+  else if (t.effect === 'invincible') effects.dash = performance.now() + (t.dur || 2000);
+  else if (t.effect === 'restore') {
+    energy = MAX_ENERGY;
+    const healed = Math.min(2, MAX_HP - hp);
+    hp = Math.min(hp + 2, MAX_HP);
+    if (healed > 0) spawnFloat(player.x, player.y - 32, `+${healed}❤️`, '#e08a92');
+    spawnFloat(player.x + 14, player.y - 16, '⚡ ПОЛНАЯ ЭНЕРГИЯ', '#9a7fd1');
+  }
+  else if (t.effect === 'speed') effects.boost = performance.now() + (t.dur || 3000);
+  else if (t.effect === 'skiplane') effects.skiplane = performance.now() + (t.dur || 5000);
+  else if (t.effect === 'magnet') effects.magnet = performance.now() + (t.dur || 4000);
+  else if (t.effect === 'smash') effects.smash = performance.now() + (t.dur || 4000);
+  else if (t.effect === 'levitate') effects.levitate = performance.now() + (t.dur || 6000);
+  else if (t.effect === 'invisible') effects.invisible = performance.now() + (t.dur || 10000);
+}
+
+// =====================================================================
+// ИНВЕНТАРЬ ТАЛИСМАНОВ — один слот; пока талисман в инвентаре, новые не подбираются
+// =====================================================================
+function updateTalismanUI() {
+  const btn = document.getElementById('talisman-btn');
+  const lbl = document.getElementById('talisman-label');
+  if (!btn || !lbl) return;
+  if (talisman) {
+    btn.style.display = 'flex';
+    lbl.style.display = 'block';
+    btn.textContent = talisman.em;
+    btn.style.background = `radial-gradient(circle at 35% 30%, #f4f1ea, ${talisman.color})`;
+    lbl.textContent = talisman.label;
+  } else {
+    btn.style.display = 'none';
+    lbl.style.display = 'none';
+  }
+}
+
+function grantTalisman(t, x, laneIdx) {
+  if (talisman) {
+    // Инвентарь занят — талисман не подбирается, взамен алмаз
+    diamonds++;
+    spawnBurst(x, laneY(laneIdx), theme.accent);
+    spawnFloat(x, laneY(laneIdx), '🎒 Талисман уже есть! +1💎', theme.accent);
+  } else {
+    talisman = t;
+    spawnBurst(x, laneY(laneIdx), t.color);
+    spawnFloat(x, laneY(laneIdx), `${t.em} ${t.label} в инвентаре!`, t.color);
+    updateTalismanUI();
+  }
+  updateHud();
+}
+
+function useTalisman() {
+  if (!running || gameOverFlag || !talisman) return;
+  const t = talisman;
+  talisman = null;
+  updateTalismanUI();
+  if (t.effect === 'fireball') {
+    fireDragonball(t);
+  } else if (t.effect === 'laser') {
+    firePigLaser(t);
+  } else if (t.effect === 'monkeyfy') {
+    monkeyfyMob(t);
+  } else if (t.effect === 'witch') {
+    summonWitch(t);
+  } else if (t.effect === 'split') {
+    splitClone(t);
+  } else if (t.effect === 'declutter') {
+    clearObstacles(t);
+  } else {
+    applyTalisman(t);
+  }
+  updateHud();
+}
+
+function fireDragonball(t) {
+  const now = performance.now();
+  const playerY = player.y + 19 + getJumpOffset();
+  const lane = player.currentLane;
+  createAbilityEffect('dragonball', player.x + 20, playerY, lane, t.color);
+  // Короткое окно, чтобы препятствия, в которые игрок влетит следом, тоже сгорали (как у ролевых атак)
+  effects.dragonball_attack = now + 450;
+
+  const targets = obstacles.filter(o => !o.dead && o.lane === lane && o.x > player.x - 10 &&
+    ((o.kind === 'mob' || o.kind === 'dragon') || o.canBeDestroyedByAbility));
+  for (const target of targets) {
+    if (target.kind === 'mob' || target.kind === 'dragon') {
+      if (killMob(target)) {
+        spawnBurst(target.x, laneY(target.lane), t.color);
+      } else {
+        spawnBurst(target.x, laneY(target.lane), t.color);
+      }
+    } else {
+      target.dead = true;
+      spawnBurst(target.x, laneY(target.lane), t.color);
+      spawnFloat(target.x, laneY(target.lane), `🔥 ${target.label} СОЖЖЕНО!`, t.color);
+    }
+  }
+  showBanner(targets.length ? '🐉 ОГНЕННЫЙ ШАР! ПОЛОСА ВЫЖЖЕНА!' : '🐉 ОГНЕННЫЙ ШАР!', t.color);
+}
+
+function firePigLaser(t) {
+  // Лазер бьёт только по своей полосе (как Дракон), но задевает ВСЕХ мобов на ней разом, не только препятствия
+  const lane = player.currentLane;
+  createAbilityEffect('piglaser', player.x + 20, laneY(lane) + 18, lane, t.color);
+
+  const targets = obstacles.filter(o => !o.dead && (o.kind === 'mob' || o.kind === 'dragon') && !o.immuneClear && o.lane ===
+    lane && o.x > player.x - 10);
+  for (const target of targets) {
+    if (killMob(target)) {
+      spawnBurst(target.x, laneY(target.lane), t.color);
+    } else {
+      spawnBurst(target.x, laneY(target.lane), t.color);
+    }
+  }
+  showBanner(targets.length ? '🐷 ЛАЗЕР! ПОЛОСА ОЧИЩЕНА ОТ МОБОВ!' : '🐷 ЛАЗЕР!', t.color);
+}
+
+function monkeyfyMob(t) {
+  // Превращает ближайшего моба на текущей полосе в безобидную обезьяну —
+  // моб остаётся на поле, но больше не атакует, не бьёт и не наносит урон при столкновении
+  const target = obstacles.filter(o => !o.dead && !o.harmless && (o.kind === 'mob' || o.kind === 'dragon') && o.lane ===
+    player.currentLane && o.x > player.x - 10).sort((a, b) => a.x - b.x)[0];
+
+  if (target) {
+    target.harmless = true;
+    target.em = '🐒';
+    target.power = 0;
+    target.heavyHit = false;
+    target.venom = false;
+    target.stealsDiamond = false;
+    target.pierceShield = false;
+    target.immuneClear = true;
+    target.noJumpDodge = false;
+    target.teleportDodge = false;
+    target.specialAbility = null;
+    target.mobAbility = { kind: 'melee', abEm: '🐒', label: 'Дружелюбная обезьянка' };
+    createAbilityEffect('monkeyfy', target.x, laneY(target.lane) + 18, target.lane, t.color);
+    spawnBurst(target.x, laneY(target.lane), t.color);
+    spawnFloat(target.x, laneY(target.lane), '🐒 ПРЕВРАЩЕНИЕ!', t.color);
+    showBanner('🐒 МОБ СТАЛ БЕЗОБИДНОЙ ОБЕЗЬЯНКОЙ', t.color);
+  } else {
+    spawnBurst(player.x + 40, player.y + 19 + getJumpOffset(), t.color);
+    showBanner('🐒 НЕТ ЦЕЛИ', t.color);
+  }
+}
+
+function summonWitch(t) {
+  // Овца призывает ведьму-спутницу на 10 секунд — она стреляет тёмной магией по мобам
+  const now = performance.now();
+  ally = {
+    em: '🧙‍♀️',
+    color: t.color,
+    abEm: '🔮',
+    kind: 'darkbolt',
+    roleName: 'Тёмная магия',
+    lane: player.currentLane,
+    x: player.x + 46,
+    power: 2,
+    permanent: false,
+    until: now + 10000,
+    nextFire: now + 700,
+    fireGap: 1700,
+    hp: ALLY_MAX_HP,
+    maxHp: ALLY_MAX_HP
+  };
+  spawnBurst(player.x, player.y + 19 + getJumpOffset(), t.color);
+  spawnFloat(player.x, player.y - 16, '🧙‍♀️ ВЕДЬМА ПРИЗВАНА!', t.color);
+  showBanner('🐑 ОВЦА ПРИЗЫВАЕТ ВЕДЬМУ НА 10 СЕК!', t.color);
+}
+
+function splitClone(t) {
+  // Тигр расщепляет игрока на двоих — двойник бежит впереди со своим отдельным
+  // запасом энергии/ресурса и сам использует способности роли, пока хватает запасов
+  const role = ROLES[selectedRole];
+  const now = performance.now();
+  clone = {
+    lane: player.currentLane,
+    x: player.x + 70,
+    em: role.em,
+    color: t.color,
+    energy: energy,
+    resource: role.resource || null,
+    resourceAmount: role.resource ? getResourceAmount(role.resource) : 0,
+    resourceCost: role.cost || 0,
+    basicKind: role.basicKind || role.kind,
+    specialKind: role.tiered ? role.kind : null,
+    nextAction: now + 700,
+    actionGap: 900,
+    nextEnergyTick: now + 2500,
+    until: now + (t.dur || 10000)
+  };
+  spawnBurst(player.x, player.y + 19 + getJumpOffset(), t.color);
+  spawnFloat(player.x, player.y - 16, '🐅 РАСЩЕПЛЕНИЕ!', t.color);
+  showBanner('🐅 ТИГР РАСЩЕПИЛ ИГРОКА НА ДВОИХ! 10 СЕК', t.color);
+}
+
+function fireCloneAction() {
+  if (!clone) return;
+  let kind = null;
+  if (clone.specialKind && clone.resource && clone.resourceAmount >= clone.resourceCost) {
+    clone.resourceAmount -= clone.resourceCost;
+    kind = clone.specialKind;
+  } else if (clone.energy >= 1) {
+    clone.energy -= 1;
+    kind = clone.basicKind;
+  } else {
+    return;
+  }
+  fireCloneAbility(kind === clone.specialKind);
+}
+
+function fireCloneAbility(isSpecial) {
+  if (!clone) return;
+  const targets = obstacles.filter(o => !o.dead && (o.kind === 'mob' || o.kind === 'dragon') && !o.immuneClear && o.lane ===
+    clone.lane && o.x > clone.x - 10).sort((a, b) => a.x - b.x);
+  if (!targets.length) {
+    spawnBurst(clone.x + 20, laneY(clone.lane), clone.color);
+    return;
+  }
+  const hitList = isSpecial ? targets.slice(0, 3) : targets.slice(0, 1);
+  for (const target of hitList) {
+    killMob(target);
+    spawnBurst(target.x, laneY(target.lane), clone.color);
+  }
+}
+
+function clearObstacles(t) {
+  // Крыса оживляет неживые препятствия впереди на всех полосах — они просто встают и уходят.
+  // Мобов это не касается вообще.
+  const targets = obstacles.filter(o => !o.dead && o.canBeDestroyedByAbility && o.x > player.x - 10);
+  for (const target of targets) {
+    target.dead = true;
+    spawnBurst(target.x, laneY(target.lane), t.color);
+    spawnFloat(target.x, laneY(target.lane), `🐀 ${target.label} ОЖИЛО И УШЛО!`, t.color);
+  }
+  showBanner(targets.length ? '🐀 КРЫСА ОЖИВИЛА ПРЕПЯТСТВИЯ — ОНИ УШЛИ!' : '🐀 НЕЧЕГО ОЖИВЛЯТЬ', t.color);
+}
+// =====================================================================
+// Рисует верёвку/цепь как цепочку овальных звеньев между двумя точками —
+// используется и для замаха лассо голема, и для момента затягивания.
+function drawChainLine(ctx, x1, y1, x2, y2, color, alpha, segCount) {
+  const dx = x2 - x1, dy = y2 - y1;
+  const dist = Math.hypot(dx, dy);
+  if (dist < 2) return;
+  const segments = segCount || Math.max(3, Math.round(dist / 12));
+  const angle = Math.atan2(dy, dx);
+  const segLen = dist / segments;
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  for (let i = 0; i < segments; i++) {
+    const cx = x1 + dx * (i + 0.5) / segments;
+    const cy2 = y1 + dy * (i + 0.5) / segments;
+    ctx.save();
+    ctx.translate(cx, cy2);
+    ctx.rotate(angle + (i % 2 === 0 ? 0 : Math.PI / 2));
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.ellipse(0, 0, Math.max(segLen * 0.55, 3), Math.max(segLen * 0.26, 1.5), 0, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+  }
+  ctx.restore();
+}
+
+function createAbilityEffect(kind, x, y, lane, color, pending, lanes) {
+  abilityEffects.push({
+    kind: kind,
+    x: x,
+    y: y,
+    lane: lane,
+    lanes: lanes || null,
+    color: color,
+    life: 60,
+    maxLife: 60,
+    progress: 0,
+    pending: !!pending
+  });
+}
+
+function tryResolvePendingHit(e) {
+  const hitRadius = e.kind === 'bite' ? 26 : 16;
+  const target = obstacles.find(o => !o.dead && (o.kind === 'mob' || o.kind === 'dragon') && !o.immuneClear && o.lane ===
+    e.lane && Math.abs(o.x - e.x) < hitRadius);
+  if (!target) return;
+  e.pending = false;
+  e.life = Math.min(e.life, 6);
+  e.x = target.x;
+  if (killMob(target)) {
+    spawnBurst(target.x, laneY(target.lane), e.color);
+  } else {
+    spawnBurst(target.x, laneY(target.lane), e.color);
+  }
+  updateHud();
+}
+
+function updateAbilityEffects() {
+  abilityEffects = abilityEffects.filter(e => e.life > 0);
+  for (const e of abilityEffects) {
+    e.life--;
+    e.progress = 1 - e.life / e.maxLife;
+    if (e.kind === 'jetshot' || e.kind === 'magic_ball' || e.kind === 'gear_shot' || e.kind === 'butterfly_shot') {
+      e.x += 8;
+    }
+    if (e.kind === 'orf') {
+      e.x += 13;
+    }
+    if (e.kind === 'dragonball') {
+      e.x += 16;
+    }
+    if (e.pending && (e.kind === 'magic_ball' || e.kind === 'gear_shot' || e.kind === 'bite' || e.kind === 'butterfly_shot')) {
+      tryResolvePendingHit(e);
+    }
+  }
+}
+
+function drawAbilityEffect(e, ctx, cssW, boxH) {
+  const cy = laneY(e.lane) + 18;
+  const alpha = 1 - e.progress;
+
+  ctx.save();
+
+  if (e.kind === 'jetshot') {
+    const grad = ctx.createLinearGradient(e.x - 40, cy, e.x + 60, cy);
+    grad.addColorStop(0, `rgba(154, 127, 209, 0)`);
+    grad.addColorStop(0.2, `rgba(154, 127, 209, ${0.8 * alpha})`);
+    grad.addColorStop(0.5, `rgba(200, 180, 255, ${alpha})`);
+    grad.addColorStop(0.8, `rgba(154, 127, 209, ${0.8 * alpha})`);
+    grad.addColorStop(1, `rgba(154, 127, 209, 0)`);
+    ctx.fillStyle = grad;
+    ctx.shadowColor = 'rgba(154, 127, 209, 0.5)';
+    ctx.shadowBlur = 30;
+    ctx.beginPath();
+    ctx.ellipse(e.x, cy, 80, 12 + 8 * Math.sin(e.progress * 10), 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.shadowBlur = 50;
+    ctx.fillStyle = `rgba(255, 255, 255, ${0.6 * alpha})`;
+    ctx.beginPath();
+    ctx.ellipse(e.x, cy, 15, 5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+  } else if (e.kind === 'volcanic') {
+    // Лава заливает всю полосу впереди — та же вязкая "зыбучая" пульсация, что и у песчаной ловушки,
+    // только в лавовых тонах и растянутая на весь видимый участок полосы
+    const startX = e.x - 20;
+    const endX = cssW + 30;
+    const fillT = Math.min(1, e.progress * 3.2);
+    const spreadX = startX + (endX - startX) * fillT;
+
+    ctx.shadowColor = 'rgba(255, 87, 34, 0.55)';
+    ctx.shadowBlur = 28;
+    const grad = ctx.createLinearGradient(startX, cy, spreadX, cy);
+    grad.addColorStop(0, `rgba(255, 152, 0, ${0.15 * alpha})`);
+    grad.addColorStop(0.3, `rgba(230, 74, 25, ${0.55 * alpha})`);
+    grad.addColorStop(0.7, `rgba(191, 54, 12, ${0.6 * alpha})`);
+    grad.addColorStop(1, `rgba(255, 111, 0, ${0.35 * alpha})`);
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.ellipse((startX + spreadX) / 2, cy, Math.max((spreadX - startX) / 2, 1), 20 + 4 * Math.sin(e.progress * 12), 0, 0, Math
+      .PI * 2);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+
+    // Пузырящаяся лавовая корка — те же всплывающие пузырьки, что у зыбучего песка, но в цвете магмы
+    const bubbleCount = Math.max(2, Math.round(18 * fillT));
+    for (let i = 0; i < bubbleCount; i++) {
+      const bx = startX + (i / 17) * (endX - startX);
+      const waveY = cy + 10 * Math.sin(e.progress * 14 + i * 0.85);
+      const r = 3 + 2.5 * Math.sin(e.progress * 16 + i * 1.3 + bx * 0.02);
+      ctx.globalAlpha = alpha * 0.75;
+      ctx.fillStyle = i % 2 === 0 ? 'rgba(255, 193, 7, 0.55)' : 'rgba(216, 67, 21, 0.55)';
+      ctx.beginPath();
+      ctx.arc(bx, waveY, Math.max(r, 1), 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+  } else if (e.kind === 'wave') {
+    const affectedLanes = (e.lanes && e.lanes.length) ? e.lanes : [e.lane];
+    const lanesY = affectedLanes.map(l => laneY(l) + 18);
+    const topY = Math.min(...lanesY) - 26;
+    const bottomY = Math.max(...lanesY) + 26;
+    const midY = (topY + bottomY) / 2;
+    const halfHeight = Math.max((bottomY - topY) / 2, 26);
+    const radius = 30 + e.progress * 230;
+
+    ctx.globalAlpha = alpha * 0.8;
+    ctx.shadowColor = 'rgba(111, 168, 201, 0.45)';
+    ctx.shadowBlur = 26;
+
+    // Разлив воды, охватывающий свою и соседнюю платформу
+    const grad = ctx.createRadialGradient(e.x, midY, 4, e.x, midY, radius);
+    grad.addColorStop(0, `rgba(150, 210, 240, ${0.12 * alpha})`);
+    grad.addColorStop(0.55, `rgba(111, 168, 201, ${0.32 * alpha})`);
+    grad.addColorStop(0.85, `rgba(150, 210, 240, ${0.5 * alpha})`);
+    grad.addColorStop(1, `rgba(111, 168, 201, 0)`);
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.ellipse(e.x, midY, radius, Math.min(halfHeight, radius), 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Пенный гребень волны на каждой из задетых платформ
+    ctx.strokeStyle = `rgba(220, 240, 250, ${0.6 * alpha})`;
+    ctx.lineWidth = 3;
+    for (const ly of lanesY) {
+      ctx.beginPath();
+      for (let i = -6; i <= 6; i++) {
+        const t = i / 6;
+        const px = e.x + t * radius * 0.85;
+        const py = ly + Math.sin(t * 8 + e.progress * 12) * 4;
+        if (i === -6) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+      }
+      ctx.stroke();
+    }
+    ctx.shadowBlur = 0;
+    ctx.globalAlpha = 1;
+  } else if (e.kind === 'bite') {
+    const radius = 15 + e.progress * 35;
+    ctx.globalAlpha = alpha * 0.7;
+    ctx.shadowColor = 'rgba(182, 57, 74, 0.6)';
+    ctx.shadowBlur = 30;
+    const grad = ctx.createRadialGradient(e.x, cy, 2, e.x, cy, radius);
+    grad.addColorStop(0, `rgba(200, 80, 100, ${0.8 * alpha})`);
+    grad.addColorStop(0.4, `rgba(182, 57, 74, ${0.6 * alpha})`);
+    grad.addColorStop(0.8, `rgba(120, 30, 50, ${0.3 * alpha})`);
+    grad.addColorStop(1, `rgba(80, 20, 30, 0)`);
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.arc(e.x, cy, radius, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    ctx.globalAlpha = 1;
+  } else if (e.kind === 'fly') {
+    const wingSize = 20 + e.progress * 10;
+    ctx.globalAlpha = alpha * 0.5;
+    ctx.shadowColor = 'rgba(255, 226, 154, 0.4)';
+    ctx.shadowBlur = 30;
+    for (let side = -1; side <= 1; side += 2) {
+      ctx.fillStyle = `rgba(255, 226, 154, ${0.3 * alpha})`;
+      ctx.beginPath();
+      ctx.ellipse(e.x + side * 15, cy - 5, wingSize * 0.6, wingSize * 0.3, side * 0.5 + Math.sin(e.progress * 6) * 0.3, 0, Math
+        .PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = `rgba(255, 226, 154, ${0.4 * alpha})`;
+      ctx.lineWidth = 1;
+      ctx.stroke();
+    }
+    ctx.shadowBlur = 0;
+    ctx.globalAlpha = 1;
+  } else if (e.kind === 'swim') {
+    ctx.globalAlpha = alpha * 0.7;
+    ctx.shadowColor = 'rgba(111, 168, 201, 0.5)';
+    ctx.shadowBlur = 22;
+    // Расходящиеся кольца воды под русалкой
+    for (let i = 0; i < 3; i++) {
+      const ringProgress = (e.progress + i * 0.28) % 1;
+      const radius = 10 + ringProgress * 34;
+      ctx.globalAlpha = alpha * (1 - ringProgress) * 0.6;
+      ctx.strokeStyle = 'rgba(150, 210, 240, 0.8)';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.ellipse(e.x, cy + 14, radius, radius * 0.35, 0, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+    // Волнистый след жидкости
+    ctx.globalAlpha = alpha * 0.5;
+    const grad = ctx.createLinearGradient(e.x - 26, cy, e.x + 26, cy);
+    grad.addColorStop(0, 'rgba(111,168,201,0)');
+    grad.addColorStop(0.5, 'rgba(150,210,240,0.6)');
+    grad.addColorStop(1, 'rgba(111,168,201,0)');
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.ellipse(e.x, cy + Math.sin(e.progress * Math.PI * 8) * 3, 28, 10, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    ctx.globalAlpha = 1;
+  } else if (e.kind === 'dash') {
+    const width = 20 + e.progress * 60;
+    ctx.globalAlpha = alpha * 0.6;
+    ctx.shadowColor = 'rgba(138, 122, 90, 0.4)';
+    ctx.shadowBlur = 20;
+    const grad = ctx.createLinearGradient(e.x - width / 2, cy, e.x + width / 2, cy);
+    grad.addColorStop(0, `rgba(138, 122, 90, 0)`);
+    grad.addColorStop(0.3, `rgba(200, 180, 140, ${0.6 * alpha})`);
+    grad.addColorStop(0.5, `rgba(240, 220, 180, ${0.8 * alpha})`);
+    grad.addColorStop(0.7, `rgba(200, 180, 140, ${0.6 * alpha})`);
+    grad.addColorStop(1, `rgba(138, 122, 90, 0)`);
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.ellipse(e.x, cy, width / 2, 8 + 4 * Math.sin(e.progress * 8), 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    ctx.globalAlpha = 1;
+  } else if (e.kind === 'orf') {
+    // Орф выбегает из-за спины игрока и проносится по полосе к цели
+    const trailLen = 65;
+    ctx.globalAlpha = alpha * 0.5;
+    ctx.shadowColor = 'rgba(138, 122, 90, 0.4)';
+    ctx.shadowBlur = 16;
+    const grad = ctx.createLinearGradient(e.x - trailLen, cy, e.x, cy);
+    grad.addColorStop(0, 'rgba(138, 122, 90, 0)');
+    grad.addColorStop(0.55, 'rgba(200, 180, 140, 0.45)');
+    grad.addColorStop(1, 'rgba(240, 220, 180, 0.7)');
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.ellipse(e.x - trailLen / 2, cy + 8, trailLen / 2, 6 + 2 * Math.sin(e.progress * 10), 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+
+    // Пыль из-под лап
+    for (let i = 0; i < 4; i++) {
+      const dx = e.x - 12 - i * 12;
+      const dy = cy + 12 + Math.sin(e.progress * 22 + i * 1.4) * 2;
+      ctx.globalAlpha = alpha * (0.4 - i * 0.08);
+      ctx.beginPath();
+      ctx.arc(dx, dy, 3 - i * 0.5, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(180, 160, 120, 0.6)';
+      ctx.fill();
+    }
+
+    ctx.globalAlpha = alpha;
+    ctx.font = '22px serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('🐕', e.x, cy - 3);
+    ctx.globalAlpha = 1;
+  } else if (e.kind === 'reflect') {
+    const radius = 20 + e.progress * 30;
+    ctx.globalAlpha = alpha * 0.7;
+    ctx.shadowColor = 'rgba(201, 85, 107, 0.5)';
+    ctx.shadowBlur = 25;
+    const grad = ctx.createRadialGradient(e.x - 5, cy - 5, 2, e.x, cy, radius);
+    grad.addColorStop(0, `rgba(255, 200, 220, ${0.6 * alpha})`);
+    grad.addColorStop(0.3, `rgba(201, 85, 107, ${0.5 * alpha})`);
+    grad.addColorStop(0.7, `rgba(150, 60, 80, ${0.3 * alpha})`);
+    grad.addColorStop(1, `rgba(100, 40, 60, 0)`);
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.arc(e.x, cy, radius, 0, Math.PI * 2);
+    ctx.fill();
+    for (let i = 0; i < 8; i++) {
+      const angle = e.progress * 20 + i * 0.8;
+      const dist = 10 + e.progress * 25;
+      const size = 4 + Math.sin(e.progress * 15 + i * 0.7) * 2;
+      ctx.save();
+      ctx.translate(e.x + Math.cos(angle) * dist, cy + Math.sin(angle) * dist * 0.6);
+      ctx.rotate(angle + e.progress * 5);
+      ctx.fillStyle = `rgba(255, 200, 220, ${0.3 * alpha * (0.5 + 0.5 * Math.sin(e.progress * 10 + i))})`;
+      ctx.shadowBlur = 10;
+      ctx.fillRect(-size / 2, -size / 2, size, size * 1.5);
+      ctx.restore();
+    }
+    ctx.shadowBlur = 0;
+    ctx.globalAlpha = 1;
+  } else if (e.kind === 'magic_ball') {
+    const radius = 10 + Math.sin(e.progress * 12) * 2;
+    ctx.globalAlpha = alpha;
+    ctx.shadowColor = e.color;
+    ctx.shadowBlur = 25;
+    const grad = ctx.createRadialGradient(e.x, cy, 1, e.x, cy, radius);
+    grad.addColorStop(0, 'rgba(255,255,255,0.9)');
+    grad.addColorStop(0.4, e.color);
+    grad.addColorStop(1, 'rgba(154,127,209,0)');
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.arc(e.x, cy, radius, 0, Math.PI * 2);
+    ctx.fill();
+    for (let i = 0; i < 3; i++) {
+      ctx.globalAlpha = alpha * (0.3 - i * 0.08);
+      ctx.beginPath();
+      ctx.arc(e.x - (i + 1) * 10, cy, radius * (1 - i * 0.25), 0, Math.PI * 2);
+      ctx.fillStyle = e.color;
+      ctx.fill();
+    }
+    ctx.shadowBlur = 0;
+    ctx.globalAlpha = 1;
+  } else if (e.kind === 'gear_shot') {
+    const radius = 9 + Math.sin(e.progress * 10) * 1.5;
+    const spin = e.progress * 14;
+    ctx.globalAlpha = alpha;
+    ctx.shadowColor = e.color;
+    ctx.shadowBlur = 18;
+    ctx.translate(e.x, cy);
+    ctx.rotate(spin);
+    ctx.fillStyle = e.color;
+    ctx.beginPath();
+    for (let i = 0; i < 8; i++) {
+      const a1 = (i / 8) * Math.PI * 2;
+      const rOuter = radius + 4;
+      const rInner = radius;
+      ctx.lineTo(Math.cos(a1) * rOuter, Math.sin(a1) * rOuter);
+      const a2 = ((i + 0.5) / 8) * Math.PI * 2;
+      ctx.lineTo(Math.cos(a2) * rInner, Math.sin(a2) * rInner);
+    }
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.7)';
+    ctx.beginPath();
+    ctx.arc(0, 0, radius * 0.35, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    ctx.globalAlpha = 1;
+  } else if (e.kind === 'butterfly_shot') {
+    const flap = Math.sin(e.progress * 26) * 0.5 + 0.5;
+    ctx.globalAlpha = alpha;
+    ctx.shadowColor = e.color;
+    ctx.shadowBlur = 16;
+    ctx.translate(e.x, cy - Math.sin(e.progress * 10) * 6);
+    ctx.scale(0.7 + flap * 0.5, 1);
+    ctx.font = '20px serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('🦋', 0, 0);
+    ctx.shadowBlur = 0;
+    ctx.globalAlpha = 1;
+  } else if (e.kind === 'dragonball') {
+    // Огненный шар дракона несётся по полосе, поджигая всё на пути
+    const trailLen = 95;
+    ctx.globalAlpha = alpha * 0.65;
+    ctx.shadowColor = 'rgba(226, 84, 63, 0.55)';
+    ctx.shadowBlur = 26;
+    const trailGrad = ctx.createLinearGradient(e.x - trailLen, cy, e.x, cy);
+    trailGrad.addColorStop(0, 'rgba(226, 84, 63, 0)');
+    trailGrad.addColorStop(0.5, 'rgba(230, 126, 34, 0.5)');
+    trailGrad.addColorStop(1, 'rgba(255, 193, 7, 0.85)');
+    ctx.fillStyle = trailGrad;
+    ctx.beginPath();
+    ctx.ellipse(e.x - trailLen / 2, cy, trailLen / 2, 11 + 3 * Math.sin(e.progress * 14), 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.shadowBlur = 32;
+    const r = 13 + Math.sin(e.progress * 16) * 2;
+    const orb = ctx.createRadialGradient(e.x, cy, 1, e.x, cy, r);
+    orb.addColorStop(0, 'rgba(255,255,255,0.95)');
+    orb.addColorStop(0.35, 'rgba(255,193,7,0.95)');
+    orb.addColorStop(0.7, 'rgba(226,84,63,0.9)');
+    orb.addColorStop(1, 'rgba(226,84,63,0)');
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = orb;
+    ctx.beginPath();
+    ctx.arc(e.x, cy, r, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    ctx.globalAlpha = 1;
+  } else if (e.kind === 'piglaser') {
+    // Лазер во всю ширину полосы — резкая яркая вспышка с мерцанием
+    const flicker = 0.7 + 0.3 * Math.sin(e.progress * 40);
+    ctx.globalAlpha = alpha * flicker;
+    ctx.shadowColor = e.color;
+    ctx.shadowBlur = 26;
+    const beamGrad = ctx.createLinearGradient(0, cy, cssW, cy);
+    beamGrad.addColorStop(0, 'rgba(255, 207, 77, 0)');
+    beamGrad.addColorStop(0.15, e.color);
+    beamGrad.addColorStop(0.85, e.color);
+    beamGrad.addColorStop(1, 'rgba(255, 207, 77, 0)');
+    ctx.fillStyle = beamGrad;
+    const halfH = 6 + 3 * flicker;
+    ctx.fillRect(0, cy - halfH, cssW, halfH * 2);
+    ctx.shadowBlur = 40;
+    ctx.fillStyle = 'rgba(255,255,255,0.85)';
+    ctx.fillRect(0, cy - 2, cssW, 4);
+    ctx.shadowBlur = 0;
+    ctx.globalAlpha = 1;
+  } else if (e.kind === 'monkeyfy') {
+    // Вспышка превращения — расходящееся кольцо + всплывающая мордочка
+    const radius = 10 + e.progress * 40;
+    ctx.globalAlpha = alpha * 0.7;
+    ctx.shadowColor = e.color;
+    ctx.shadowBlur = 20;
+    ctx.strokeStyle = e.color;
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.arc(e.x, cy, radius, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+    ctx.globalAlpha = alpha;
+    ctx.font = `${18 + e.progress * 10}px serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('🐒', e.x, cy - radius * 0.6);
+    ctx.globalAlpha = 1;
+  } else if (e.kind === 'chain_pull') {
+    // Явный рывок лассо: верёвка от голема резко затягивает петлю на игроке
+    const t = Math.min(e.progress * 2.2, 1);
+    const loopX = e.fromX + (e.toX - e.fromX) * t;
+    drawChainLine(ctx, e.golemX, cy, loopX, cy, e.color, alpha);
+    const loopR = Math.max(4, 13 * (1 - t * 0.7));
+    ctx.globalAlpha = alpha;
+    ctx.strokeStyle = e.color;
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.ellipse(loopX, cy, loopR, loopR * 0.7, 0, 0, Math.PI * 2);
+    ctx.stroke();
+    if (t > 0.9) {
+      // Искры затяжки петли в момент рывка
+      ctx.shadowColor = e.color;
+      ctx.shadowBlur = 12;
+      for (let i = 0; i < 5; i++) {
+        const a = (i / 5) * Math.PI * 2 + e.progress * 6;
+        ctx.beginPath();
+        ctx.arc(loopX + Math.cos(a) * loopR * 1.4, cy + Math.sin(a) * loopR * 1.4 * 0.7, 1.6, 0, Math.PI * 2);
+        ctx.fillStyle = e.color;
+        ctx.fill();
+      }
+      ctx.shadowBlur = 0;
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  ctx.restore();
+}
+
+// =====================================================================
+// АКТИВАЦИЯ СПОСОБНОСТЕЙ
+// =====================================================================
+function triggerAbility() {
+  if (!running || gameOverFlag || !abilityReady) return;
+  const role = ROLES[selectedRole];
+  const now = performance.now();
+
+  // Роли с двумя уровнями (Волшебник, Изобретатель, Русалка): если хватает кристаллов/шестерёнок/раковин —
+  // срабатывает супер-способность, иначе — обычная атака за энергию, как у всех
+  let useSuper = false;
+  if (role.tiered) {
+    const superAffordable = getResourceAmount(role.resource) >= role.cost;
+    if (superAffordable) {
+      useSuper = true;
+    } else if (energy < role.energyCost) {
+      showBanner('⚡ НЕДОСТАТОЧНО ЭНЕРГИИ!', '#9a7fd1');
+      return;
+    }
+  } else if (role.energyCost && energy < role.energyCost) {
+    showBanner('⚡ НЕДОСТАТОЧНО ЭНЕРГИИ!', '#9a7fd1');
+    return;
+  }
+
+  const activeKind = role.tiered ? (useSuper ? role.kind : role.basicKind) : role.kind;
+
+  if ((activeKind === 'charm' || activeKind === 'confess') && ally) {
+    showBanner('🦋 СОЮЗНИК УЖЕ С ВАМИ', role.color);
+    return;
+  }
+
+  if (role.tiered) {
+    if (useSuper) {
+      if (role.resource === 'crystal') mageCrystals -= role.cost;
+      if (role.resource === 'gear') gear -= role.cost;
+      if (role.resource === 'shell') shells -= role.cost;
+      if (role.resource === 'blood') blood -= role.cost;
+      if (role.resource === 'energy') energy -= role.cost;
+      if (role.resource === 'butterfly') butterflies -= role.cost;
+    } else {
+      energy -= role.energyCost;
+    }
+  } else if (role.energyCost) {
+    energy -= role.energyCost;
+  }
+  updateHud();
+
+  if (['bite', 'wave', 'jetshot', 'dragonshot', 'magic_ball', 'gear_shot', 'volcanic', 'orf', 'butterfly_shot', 'antiakuma'].includes(activeKind)) {
+    effects[activeKind + '_attack'] = performance.now() + 300;
+  }
+
+  abilityReady = false;
+  const btn = document.getElementById('ability-btn');
+  btn.classList.add('cooling');
+  document.documentElement.style.setProperty('--ab-color', role.color);
+  startCooldownRing(role.cd);
+  const activeDur = (role.tiered && !useSuper) ? null : role.dur;
+  if (activeDur) { btn.classList.add('active-ability');
+    setTimeout(() => btn.classList.remove('active-ability'), activeDur); }
+  setTimeout(() => { abilityReady = true;
+    btn.classList.remove('cooling'); }, role.cd);
+
+  const playerY = player.y + 19 + getJumpOffset();
+  const targetLane = player.currentLane;
+
+  if (activeKind === 'jetshot') {
+    createAbilityEffect('jetshot', player.x + 20, playerY, targetLane, role.color);
+    const targets = obstacles.filter(o => !o.dead && (o.kind === 'mob' || o.kind === 'dragon') && !o.immuneClear && o.lane ===
+      player.currentLane && o.x > player.x - 10);
+    for (const t of targets) { killMob(t);
+      spawnBurst(t.x, laneY(t.lane), role.color); }
+    showBanner('🌀 ДЖЕТ-ШОТ! ПОЛЕ ОЧИЩЕНО!', role.color);
+  } else if (activeKind === 'volcanic') {
+    createAbilityEffect('volcanic', player.x + 20, playerY, targetLane, role.color);
+    const targets = obstacles.filter(o => !o.dead && (o.kind === 'mob' || o.kind === 'dragon') && !o.immuneClear && o.lane ===
+      player.currentLane && o.x > player.x - 10);
+    for (const t of targets) { killMob(t);
+      spawnBurst(t.x, laneY(t.lane), role.color); }
+    showBanner('🌋 ВУЛКАНИЧЕСКАЯ АТАКА! ЛАВА ЗАЛИЛА ПОЛОСУ!', role.color);
+  } else if (activeKind === 'magic_ball') {
+    const target = obstacles.filter(o => !o.dead && (o.kind === 'mob' || o.kind === 'dragon') && !o.immuneClear && o.x >
+      player.x).sort((a, b) => a.x - b.x)[0];
+    if (target) {
+      createAbilityEffect('magic_ball', player.x + 20, playerY, targetLane, role.color);
+      if (killMob(target)) {
+        spawnBurst(target.x, laneY(target.lane), role.color);
+      } else {
+        spawnBurst(target.x, laneY(target.lane), role.color);
+      }
+      showBanner('🔮 МАГИЧЕСКИЙ ШАР!', role.color);
+    } else {
+      createAbilityEffect('magic_ball', player.x + 20, playerY, targetLane, role.color, true);
+      showBanner('🔮 НЕТ ЦЕЛИ', role.color);
+    }
+  } else if (activeKind === 'gear_shot') {
+    const target = obstacles.filter(o => !o.dead && (o.kind === 'mob' || o.kind === 'dragon') && !o.immuneClear && o.x >
+      player.x).sort((a, b) => a.x - b.x)[0];
+    if (target) {
+      createAbilityEffect('gear_shot', player.x + 20, playerY, targetLane, role.color);
+      if (killMob(target)) {
+        spawnBurst(target.x, laneY(target.lane), role.color);
+      } else {
+        spawnBurst(target.x, laneY(target.lane), role.color);
+      }
+      showBanner('⚙️ ШЕСТЕРЁНКА!', role.color);
+    } else {
+      createAbilityEffect('gear_shot', player.x + 20, playerY, targetLane, role.color, true);
+      showBanner('⚙️ НЕТ ЦЕЛИ', role.color);
+    }
+  } else if (activeKind === 'wave') {
+    const waveLanes = [player.currentLane];
+    if (player.currentLane + 1 < activeLanes) waveLanes.push(player.currentLane + 1);
+    else if (player.currentLane - 1 >= 0) waveLanes.push(player.currentLane - 1);
+    createAbilityEffect('wave', player.x + 20, playerY, targetLane, role.color, false, waveLanes);
+    const targets = obstacles.filter(o => !o.dead && (o.kind === 'mob' || o.kind === 'dragon') && !o.immuneClear && o.x >
+      player.x && o.x < player.x + 260 && waveLanes.includes(o.lane));
+    for (const t of targets) {
+      if (killMob(t)) {
+        spawnBurst(t.x, laneY(t.lane), role.color);
+      } else {
+        spawnBurst(t.x, laneY(t.lane), role.color);
+      }
+    }
+    if (!targets.length) showBanner('🌊 ПУСТО ВПЕРЕДИ', role.color);
+  } else if (activeKind === 'bite') {
+    const BITE_RANGE = 70;
+    const target = obstacles.filter(o => !o.dead && (o.kind === 'mob' || o.kind === 'dragon') && !o.immuneClear &&
+      o.lane === player.currentLane && o.x > player.x - 20 && o.x < player.x + BITE_RANGE).sort((a, b) => a.x - b.x)[0];
+    if (target) {
+      createAbilityEffect('bite', target.x, laneY(target.lane), target.lane, role.color);
+      if (killMob(target)) {
+        if (role.resource === 'blood') {
+          const bonus = rnd(1, 2);
+          blood += bonus;
+          spawnBurst(target.x, laneY(target.lane), '#d1495b');
+          spawnFloat(target.x, laneY(target.lane), `+${bonus}🩸`, '#d1495b');
+        } else {
+          spawnBurst(target.x, laneY(target.lane), role.color);
+        }
+      } else {
+        spawnBurst(target.x, laneY(target.lane), role.color);
+      }
+    } else {
+      createAbilityEffect('bite', player.x + 40, playerY, targetLane, role.color, true);
+      showBanner('🩸 НЕТ ЦЕЛИ', role.color);
+    }
+  } else if (activeKind === 'fly') {
+    createAbilityEffect('fly', player.x, playerY, targetLane, role.color);
+    effects.fly = now + role.dur;
+    effects.dash = now + role.dur;
+    if (role.resource === 'blood') {
+      showBanner('🦇 ЛЕТУЧАЯ МЫШЬ! ПОЛЁТ НАД МОБАМИ ' + (role.dur / 1000) + 'С', role.color);
+    } else {
+      showBanner('✨ ЭНЧАНТИКС! ПОЛНАЯ НЕУЯЗВИМОСТЬ ' + (role.dur / 1000) + 'С', role.color);
+    }
+  } else if (activeKind === 'swim') {
+    createAbilityEffect('swim', player.x, playerY, targetLane, role.color);
+    effects.fly = now + role.dur;
+    effects.dash = now + role.dur;
+    showBanner('🧜‍♀️ ТЕЧЕНИЕ! ПЛАТФОРМА КАК ЖИДКОСТЬ ' + (role.dur / 1000) + 'С', role.color);
+  } else if (activeKind === 'dash') {
+    createAbilityEffect('dash', player.x, playerY, targetLane, role.color);
+    effects.dash = now + role.dur;
+    effects.boost = now + role.dur;
+    showBanner('💨 РЫВОК!', role.color);
+  } else if (activeKind === 'orf') {
+    const target = obstacles.filter(o => !o.dead && (o.kind === 'mob' || o.kind === 'dragon') && !o.immuneClear && o.lane ===
+      player.currentLane && o.x > player.x).sort((a, b) => a.x - b.x)[0];
+    createAbilityEffect('orf', player.x - 90, playerY, targetLane, role.color);
+    if (target) {
+      if (killMob(target)) {
+        spawnBurst(target.x, laneY(target.lane), role.color);
+      } else {
+        spawnBurst(target.x, laneY(target.lane), role.color);
+      }
+      showBanner('🐕 ПРИЗЫВ ОРФА! ЗВЕРЬ НАСТИГ ВРАГА!', role.color);
+    } else {
+      showBanner('🐕 ОРФ НЕ НАШЁЛ ЦЕЛЬ', role.color);
+    }
+  } else if (activeKind === 'butterfly_shot') {
+    const target = obstacles.filter(o => !o.dead && (o.kind === 'mob' || o.kind === 'dragon') && !o.immuneClear && o.x >
+      player.x).sort((a, b) => a.x - b.x)[0];
+    if (target) {
+      createAbilityEffect('butterfly_shot', player.x + 20, playerY, targetLane, role.color);
+      if (killMob(target)) {
+        spawnBurst(target.x, laneY(target.lane), role.color);
+      } else {
+        spawnBurst(target.x, laneY(target.lane), role.color);
+      }
+      showBanner('🦋 БАБОЧКА-ИСКРА!', role.color);
+    } else {
+      createAbilityEffect('butterfly_shot', player.x + 20, playerY, targetLane, role.color, true);
+      showBanner('🦋 НЕТ ЦЕЛИ', role.color);
+    }
+  } else if (activeKind === 'antiakuma') {
+    // Анти-акума: все собранные бабочки разом летят к ближайшим мобам впереди (по одной на каждую)
+    const targets = obstacles.filter(o => !o.dead && (o.kind === 'mob' || o.kind === 'dragon') && !o.immuneClear && o.x >
+      player.x).sort((a, b) => a.x - b.x).slice(0, MAX_BUTTERFLIES);
+    if (targets.length) {
+      targets.forEach((t, i) => {
+        setTimeout(() => {
+          if (t.dead) return;
+          createAbilityEffect('butterfly_shot', player.x + 20, laneY(t.lane) + 18, t.lane, role.color);
+          if (killMob(t)) {
+            spawnBurst(t.x, laneY(t.lane), role.color);
+          } else {
+            spawnBurst(t.x, laneY(t.lane), role.color);
+          }
+          updateHud();
+        }, i * 90);
+      });
+      showBanner('🦋 АНТИ-АКУМА! БАБОЧКИ ОЧИЩАЮТ ПУТЬ!', role.color);
+    } else {
+      spawnBurst(player.x + 40, playerY, role.color);
+      showBanner('🦋 НЕТ ЦЕЛИ', role.color);
+    }
+  } else if (activeKind === 'reflect') {
+    createAbilityEffect('reflect', player.x, playerY, targetLane, role.color);
+    effects.reflect = now + role.dur;
+    showBanner('🪞 ЗЕРКАЛО АГИЭЛЯ!', role.color);
+  } else if (activeKind === 'auto') {
+    effects.auto = now + role.dur;
+    showBanner('🤖 АВТОПИЛОТ!', role.color);
+  } else if (activeKind === 'charm' || activeKind === 'confess') {
+    const target = obstacles.filter(o => !o.dead && (o.kind === 'mob' || o.kind === 'dragon') && !o.immuneClear && o.x >
+      player.x).sort((a, b) => a.x - b.x)[0];
+    if (target) {
+      target.dead = true;
+      const permanent = activeKind === 'confess';
+      let abKind, abEm, abName, fireGap;
+      if (permanent) {
+        const mobDef = roster.find(m => m.key === target.key);
+        const info = (mobDef && mobDef.mobAbility) ? mobDef.mobAbility : { kind: 'melee', abEm: '⚔️', label: 'Рукопашная' };
+        abKind = info.kind;
+        abEm = info.abEm;
+        abName = `${mobDef?mobDef.label:target.key} · ${info.label}`;
+        fireGap = (abKind === 'melee') ? Infinity : 2600;
+      } else {
+        const poolKeys = Object.keys(ROLES);
+        const pickKey = poolKeys[rnd(0, poolKeys.length - 1)];
+        const pickRole = ROLES[pickKey];
+        abKind = pickRole.kind;
+        abEm = pickRole.abEm;
+        abName = pickRole.name;
+        fireGap = Math.max(2200, (pickRole.cd || 6000) * 0.4);
+      }
+      ally = {
+        em: target.em,
+        color: role.color,
+        abEm,
+        kind: abKind,
+        roleName: abName,
+        lane: target.lane,
+        x: target.x,
+        power: target.power || 2,
+        permanent,
+        until: permanent ? Infinity : now + 30000,
+        nextFire: (abKind === 'melee') ? Infinity : now + 900,
+        fireGap,
+        hp: ALLY_MAX_HP,
+        maxHp: ALLY_MAX_HP
+      };
+      spawnBurst(target.x, laneY(target.lane), role.color);
+      spawnFloat(target.x, laneY(target.lane), `${abEm} ${abName}!`, role.color);
+      showBanner(permanent ? `🕊 ИСПОВЕДЬ! ${abName} С ВАМИ` : `🦋 АКУМА! ${abEm} ${abName}`, role.color);
+    } else {
+      spawnBurst(player.x + 40, playerY, role.color);
+      showBanner(`${role.abEm} НЕТ ЦЕЛИ`, role.color);
+    }
+  }
+  updateHud();
+}
+
+function fireAllyAbility(a) {
+  const now = performance.now();
+  if (a.kind === 'bite') {
+    const target = obstacles.filter(o => !o.dead && (o.kind === 'mob' || o.kind === 'dragon') && !o.immuneClear && o.x >
+      player.x).sort((x, y) => x.x - y.x)[0];
+    if (target) {
+      killMob(target);
+      spawnBurst(target.x, laneY(target.lane), a.color);
+    } else {
+      spawnBurst(player.x + 40, player.y + 19 + getJumpOffset(), a.color);
+    }
+  } else if (a.kind === 'wave') {
+    const waveLanes = [player.currentLane];
+    if (player.currentLane + 1 < activeLanes) waveLanes.push(player.currentLane + 1);
+    else if (player.currentLane - 1 >= 0) waveLanes.push(player.currentLane - 1);
+    const targets = obstacles.filter(o => !o.dead && (o.kind === 'mob' || o.kind === 'dragon') && !o.immuneClear && o.x >
+      player.x && o.x < player.x + 220 && waveLanes.includes(o.lane));
+    for (const t of targets) {
+      killMob(t);
+      spawnBurst(t.x, laneY(t.lane), a.color);
+    }
+  } else if (a.kind === 'jetshot') {
+    const lanes = [player.currentLane];
+    if (player.currentLane + 1 < activeLanes) lanes.push(player.currentLane + 1);
+    else if (player.currentLane - 1 >= 0) lanes.push(player.currentLane - 1);
+    const targets = obstacles.filter(o => !o.dead && (o.kind === 'mob' || o.kind === 'dragon' || o.kind === 'fireball') && !
+      o.immuneClear && lanes.includes(o.lane) && o.x > player.x - 10);
+    for (const t of targets) { killMob(t);
+      spawnBurst(t.x, laneY(t.lane), a.color); }
+  } else if (a.kind === 'dragonshot') {
+    const target = obstacles.filter(o => !o.dead && (o.kind === 'mob' || o.kind === 'dragon') && !o.immuneClear && o.x >
+      player.x && o.x < player.x + 240).sort((x, y) => x.x - y.x)[0];
+    if (target) {
+      killMob(target);
+      spawnBurst(target.x, laneY(target.lane), '#e2a23f');
+    } else {
+      spawnBurst(player.x + 40, player.y + 19 + getJumpOffset(), '#e2a23f');
+    }
+  } else if (a.kind === 'orf') {
+    const target = obstacles.filter(o => !o.dead && (o.kind === 'mob' || o.kind === 'dragon') && !o.immuneClear && o.x >
+      player.x && o.x < player.x + 240).sort((x, y) => x.x - y.x)[0];
+    if (target) {
+      killMob(target);
+      spawnBurst(target.x, laneY(target.lane), a.color);
+    } else {
+      spawnBurst(player.x + 40, player.y + 19 + getJumpOffset(), a.color);
+    }
+  } else if (a.kind === 'darkbolt') {
+    const target = obstacles.filter(o => !o.dead && (o.kind === 'mob' || o.kind === 'dragon') && !o.immuneClear && o.x >
+      player.x && o.x < player.x + 260).sort((x, y) => x.x - y.x)[0];
+    if (target) {
+      killMob(target);
+      spawnBurst(target.x, laneY(target.lane), a.color);
+    } else {
+      spawnBurst(player.x + 40, player.y + 19 + getJumpOffset(), a.color);
+    }
+  } else if (a.kind === 'fly' || a.kind === 'dash' || a.kind === 'swim') {
+    effects.dash = now + 1400;
+  } else if (a.kind === 'reflect') {
+    effects.reflect = now + 1200;
+  } else if (a.kind === 'auto') {
+    effects.auto = now + 1800;
+  } else if (a.kind === 'shield') {
+    effects.shield = Infinity;
+  } else {
+    // Общий вариант для способностей без отдельной реализации у союзника — ближайшая цель погибает
+    const target = obstacles.filter(o => !o.dead && (o.kind === 'mob' || o.kind === 'dragon') && !o.immuneClear && o.x >
+      player.x && o.x < player.x + 240).sort((x, y) => x.x - y.x)[0];
+    if (target) {
+      killMob(target);
+      spawnBurst(target.x, laneY(target.lane), a.color);
+    }
+  }
+}
+
+// =====================================================================
+// ОСНОВНОЙ ЦИКЛ
+// =====================================================================
+function loop() {
+  if (!running) return;
+  const cssW = canvasCssW();
+  const now = performance.now();
+
+  handlePoison(now);
+  updateAbilityEffects();
+
+  // Зоны опасности движутся справа налево
+  warningZones = warningZones.filter(z => z.life > 0);
+  for (const z of warningZones) {
+    z.life--;
+    const speed = z.speed || 1.8;
+    z.x -= speed;
+  }
+
+  obstacles = obstacles.filter(o => o.x > -60 && !o.dead);
+
+  let curSpeed = speed;
+  const freezing = effects.freeze && now < effects.freeze;
+  if (effects.slow && now < effects.slow) curSpeed *= 0.5;
+  else delete effects.slow;
+  if (freezing) curSpeed = 0;
+  else delete effects.freeze;
+  if (effects.boost && now < effects.boost) curSpeed *= 1.6;
+  else delete effects.boost;
+
+  if (effects.fly && now < effects.fly && Math.random() < 0.55) {
+    const isMermaid = selectedRole === 'merm';
+    particles.push({ x: player.x + rnd(-10, 10), y: player.y + 22, vx: (Math.random() - 0.5) * 1.4, vy: isMermaid ? (0.3 +
+      Math.random() * 0.6) : (-0.6 - Math.random() * 0.8), life: 24, color: isMermaid ? '#6fa8c9' : '#ffe29a' });
+  }
+
+  if (effects.levitate && now < effects.levitate && Math.random() < 0.5) {
+    particles.push({ x: player.x + rnd(-10, 10), y: player.y + 26, vx: (Math.random() - 0.5) * 1.2, vy: -0.5 - Math.random() *
+      0.7, life: 22, color: '#f2d675' });
+  }
+
+  distance += curSpeed * 0.05 + (freezing ? 0.14 : 0);
+  scrollX += curSpeed;
+  speed = Math.min(speed + 0.0009, 8.5);
+
+  const distDia = distanceDiamondsFor(distance);
+  if (distDia > distanceDiamonds) {
+    diamonds += (distDia - distanceDiamonds);
+    distanceDiamonds = distDia;
+  }
+
+  const prevLanes = activeLanes;
+  activeLanes = distance > LANE3_AT ? 3 : (distance > LANE2_AT ? 2 : 1);
+  if (activeLanes > prevLanes) showBanner('🪜 ОТКРЫТА НОВАЯ ПЛАТФОРМА!', theme.accent);
+
+  if (effects.auto && now < effects.auto) {
+    if (!player.transition) {
+      const danger = o => !o.dead && o.kind !== 'pickup' && o.x > player.x + 4 && o.x < player.x + 150;
+      if (obstacles.some(o => o.lane === player.currentLane && danger(o))) {
+        let best = null,
+          bestDist = Infinity;
+        for (let l = 0; l < activeLanes; l++) {
+          if (l === player.currentLane) continue;
+          if (!obstacles.some(o => o.lane === l && danger(o))) {
+            const d = Math.abs(l - player.currentLane);
+            if (d < bestDist) { bestDist = d;
+              best = l; }
+          }
+        }
+        if (best !== null) changeLane(best - player.currentLane);
+      }
+    }
+  } else { delete effects.auto; }
+
+  if (player.transition) {
+    const p = clamp((now - player.transition.t0) / player.transition.dur, 1e-6, 1);
+    const ease = 1 - (1 - p) * (1 - p);
+    const bump = Math.sin(p * Math.PI) * 16;
+    player.y = player.transition.from + (player.transition.to - player.transition.from) * ease - bump;
+    if (p >= 1) { player.y = player.transition.to;
+      player.transition = null; }
+  }
+
+  if (isJumping) {
+    jumpY += jumpSpeed;
+    jumpSpeed += GRAVITY;
+    if (jumpY >= 0) {
+      jumpY = 0;
+      isJumping = false;
+      jumpCount = 0;
+      jumpSpeed = 0;
+      spawnBurst(player.x, player.y + 34, ROLES[selectedRole].color);
+    }
+  }
+
+  // Динамический фон: слегка смещается вниз при прыжке (сильнее при двойном),
+  // и плавно возвращается на место при приземлении
+  {
+    const bgTarget = isJumping ? (jumpCount >= 2 ? BG_SHIFT_DOUBLE : BG_SHIFT_SINGLE) : 0;
+    const bgEase = isJumping ? 0.16 : 0.12;
+    bgOffsetY += (bgTarget - bgOffsetY) * bgEase;
+    if (Math.abs(bgOffsetY) < 0.05) bgOffsetY = 0;
+  }
+
+  if (ally) {
+    if (now > ally.until || activeLanes === 0) { ally = null; } else {
+      ally.lane = player.currentLane;
+      ally.x = player.x + 46;
+      if (now >= ally.nextFire) { ally.nextFire = now + ally.fireGap;
+        fireAllyAbility(ally); }
+    }
+  }
+
+  if (clone) {
+    if (now > clone.until || activeLanes === 0) { clone = null; } else {
+      clone.lane = player.currentLane;
+      clone.x = player.x + 70;
+      if (now >= clone.nextEnergyTick) { clone.nextEnergyTick = now + 2500;
+        clone.energy = Math.min(clone.energy + 1, MAX_ENERGY); }
+      if (now >= clone.nextAction) { clone.nextAction = now + clone.actionGap;
+        fireCloneAction(); }
+    }
+  }
+
+  spawnTimer++;
+  if (spawnTimer > spawnGap) { spawnTimer = 0;
+    spawnGap = rnd(55, 95) - Math.min((speed - 3.4) * 14, 42);
+    spawnObstacle(); }
+
+  const magnet = effects.magnet && now < effects.magnet;
+  if (effects.magnet && now >= effects.magnet) delete effects.magnet;
+
+  const frozen = effects.freeze && now < effects.freeze;
+  const invisible = effects.invisible && now < effects.invisible;
+  const newProjectiles = [];
+
+  // ОБРАБОТКА ЗОН ОПАСНОСТИ (столкновение с игроком)
+  const zoneJumpDodge = isJumping && Math.abs(jumpY) > 14;
+  const zoneFlyingActive = effects.fly && now < effects.fly;
+  const zoneReflectActive = effects.reflect && now < effects.reflect;
+  for (const z of warningZones) {
+    if (z.x < -50) continue;
+    if (zoneFlyingActive && z.lane === player.currentLane && Math.abs(z.x - player.x) < 30) {
+      // Фея в Энчантикс неуязвима абсолютно ко всему, включая магические зоны
+      spawnBurst(z.x, laneY(z.lane), '#ffd700');
+      spawnFloat(z.x, laneY(z.lane) - 20, '✨ НЕУЯЗВИМ!', '#ffd700');
+      z.life = 0;
+      continue;
+    }
+    if (zoneReflectActive && z.lane === player.currentLane && Math.abs(z.x - player.x) < 30) {
+      // МордСит отражает магические зоны — торнадо, споры, яд и замедление
+      spawnBurst(z.x, laneY(z.lane), '#c9556b');
+      spawnFloat(z.x, laneY(z.lane) - 20, '🪞 ОТРАЖЕНО!', '#c9556b');
+      z.life = 0;
+      continue;
+    }
+    if (z.lane === player.currentLane && Math.abs(z.x - player.x) < 30 && !zoneJumpDodge) {
+      // Торнадо теперь тоже можно перепрыгнуть; если есть куда — оно ещё и перекидывает в другую полосу
+      if (z.isTornado) {
+        hp -= 1;
+        player.hitFlash = 10;
+        spawnBurst(player.x, player.y, '#f1c40f');
+        if (activeLanes > 1) {
+          const choices = Array.from({ length: activeLanes }, (_, i) => i).filter(i => i !== player.currentLane);
+          const newLane = choices[rnd(0, choices.length - 1)];
+          player.currentLane = newLane;
+          player.transition = { from: player.y, to: laneY(newLane), t0: now, dur: 200 };
+          spawnFloat(player.x, player.y - 20, '🌪️ УНЁС СМЕРЧ!', '#f1c40f');
+        } else {
+          spawnFloat(player.x, player.y - 20, '🌪️ УДАР СМЕРЧА!', '#f1c40f');
+        }
+        updateHud();
+        if (hp <= 0) endGame();
+        z.life = 0;
+      } else if (z.label && z.label.includes('СПОРЫ')) {
+        // Споры - яд
+        player.poisonTicks = 5;
+        spawnFloat(player.x, player.y - 20, '☁️ ОТРАВЛЕН!', '#9b59b6');
+        z.life = 0;
+      } else if (z.label && z.label.includes('ЗАМЕДЛЕНИЕ')) {
+        // Замедление действует на скорость продвижения вперёд (ось X), а не на смену полос
+        effects.slow = now + 2500;
+        spawnFloat(player.x, player.y - 20, '🌱 ЗАМЕДЛЕН!', '#2ecc71');
+        z.life = 0;
+      } else if (z.label && z.label.includes('ЯД')) {
+        player.poisonTicks = 3;
+        spawnFloat(player.x, player.y - 20, '☠️ ОТРАВЛЕН!', '#27ae60');
+        z.life = 0;
+      }
+    }
+  }
+
+  for (const o of obstacles) {
+    if (o.dead) continue;
+
+    if (o.specialAbility) {
+      handleMonsterAbility(o, now, cssW);
+    }
+
+    let vx = curSpeed;
+    if (o.kind === 'fireball') vx = frozen ? 0 : vx + 3;
+    if (o.kind === 'venom') {
+      const t = o.spawnAt ? (now - o.spawnAt) / 1000 : 0;
+      vx = frozen ? 0 : 1.3 + Math.sin(t * 5 + (o.phase || 0)) * 2.6;
+    }
+    if (o.kind === 'shockwave') vx = frozen ? 0 : curSpeed + 1.6;
+    if (o.kind === 'bone_shot') vx = frozen ? 0 : o.speed || 3.5;
+    if (o.kind === 'pickup' && magnet && o.lane === player.currentLane) vx += 2.5;
+    if (o.burst && o.burstAt) {
+      if (now >= o.burstAt) {
+        const bp = clamp((now - o.burstAt) / 280, 0, 1);
+        o.burstProgress = bp;
+        vx += 3.5 * bp;
+      } else if (now >= o.burstAt - 260) {
+        o.burstWarn = clamp((now - (o.burstAt - 260)) / 260, 0, 1);
+      }
+    }
+    o.x -= vx;
+
+    // ТЕЛЕПОРТ (Ткач теней)
+    if (o.teleportDodge && !o.teleported && o.lane === player.currentLane && o.x > player.x + 40 && o.x < player.x +
+      90 && Math.random() < 0.05 && activeLanes > 1) {
+      o.teleported = true;
+      const choices = Array.from({ length: activeLanes }, (_, i) => i).filter(i => i !== o.lane);
+      o.lane = choices[rnd(0, choices.length - 1)];
+      spawnBurst(o.x, laneY(o.lane), '#151d2a');
+      spawnFloat(o.x, laneY(o.lane), '🕷 СКОЛЬЗНУЛА В ТЕНЬ', '#8a7fd1');
+    }
+
+    // ДРАКОН (огненные шары)
+    if (o.kind === 'dragon' && !o.harmless && o.x > 10 && o.x < cssW - 10 && o.x > player.x + 130 && now > o.nextShot && !frozen && !invisible) {
+      newProjectiles.push({ kind: 'fireball', lane: o.lane, x: o.x - 26, spawnAt: now });
+      o.nextShot = now + rnd(1000, 1600);
+    }
+
+    // СКОРПИОН
+    if (o.key === 'scorpion' && !o.dead && !o.harmless && o.x > 10 && o.x < cssW - 10 && o.x > player.x + 110 && o.nextSpit && now >
+      o.nextSpit && !frozen && !invisible) {
+      newProjectiles.push({ kind: 'venom', lane: o.lane, x: o.x - 22, spawnAt: now, phase: Math.random() * 6.28,
+        venom: true });
+      o.nextSpit = now + rnd(1500, 2200);
+    }
+
+    // ТРОЛЛЬ
+    if (o.key === 'troll' && !o.dead && !o.harmless && o.x > 10 && o.x < cssW - 10 && o.x > player.x + 120 && o.nextSlam && now > o
+      .nextSlam && !frozen && !invisible) {
+      newProjectiles.push({ kind: 'shockwave', lane: o.lane, x: o.x - 18, spawnAt: now });
+      o.nextSlam = now + rnd(2200, 3200);
+      spawnBurst(o.x, laneY(o.lane) + 16, '#8a7a5a');
+      spawnFloat(o.x, laneY(o.lane), '💥 УДАР О ЗЕМЛЮ!', '#8a7a5a');
+    }
+
+    // ТКАЧ ТЕНЕЙ (паутина)
+    if (o.key === 'shadow' && !o.dead && !o.harmless && o.x > 10 && o.x < cssW - 10 && o.x > player.x + 90 && o.nextWeb && now > o
+      .nextWeb && !frozen && !invisible) {
+      newProjectiles.push({ kind: 'web', lane: o.lane, x: o.x - 55, spawnAt: now });
+      o.nextWeb = now + rnd(2800, 3800);
+    }
+
+    // Союзник vs Моб
+    if (ally && !o.dead && !o.clashed && (o.kind === 'mob' || o.kind === 'dragon') && o.lane === ally.lane && Math.abs(o
+        .x - ally.x) < 22) {
+      const mobPower = o.immuneClear ? Infinity : (o.power || 1);
+      if (mobPower > ally.power) {
+        o.clashed = true;
+        ally.hp--;
+        spawnBurst(ally.x, laneY(ally.lane), ally.color);
+        if (ally.hp <= 0) {
+          spawnFloat(ally.x, laneY(ally.lane), `💀 ${ally.roleName} ПАЛ`, ally.color);
+          ally = null;
+        } else {
+          spawnFloat(ally.x, laneY(ally.lane), '-1❤', '#e08a92');
+        }
+      } else {
+        if (o.hp !== undefined) {
+          o.hp--;
+          spawnBurst(o.x, laneY(o.lane), ally.color);
+          if (o.hp <= 0) {
+            o.dead = true;
+            spawnFloat(o.x, laneY(o.lane), '⚔️', ally.color);
+          }
+        } else {
+          const fullyDead = killMob(o);
+          if (!fullyDead) o.clashed = true;
+          spawnBurst(o.x, laneY(o.lane), ally.color);
+          spawnFloat(o.x, laneY(o.lane), fullyDead ? '⚔️' : '🐉 ОТРАСТАЕТ ГОЛОВА', ally.color);
+        }
+      }
+    }
+
+    // СТОЛКНОВЕНИЕ С ИГРОКОМ
+    const jumpDodge = isJumping && Math.abs(jumpY) > 14 && (!o.noJumpDodge || jumpCount >= 2);
+    const spawnGrace = (o.kind === 'fireball' || o.kind === 'venom' || o.kind === 'shockwave') && o.spawnAt && (now - o
+      .spawnAt) < 160;
+    const burstGrace = o.burstAt && now >= o.burstAt && (now - o.burstAt) < 120;
+
+    const hitDistance = (o.kind === 'pickup') ? 20 : 28;
+
+    const hit = !o.dead && !o.hitLocked && o.lane === player.currentLane &&
+      Math.abs(o.x - player.x) < hitDistance &&
+      !player.transition && !jumpDodge && !spawnGrace && !burstGrace;
+
+    if (hit) resolveHit(o);
+  }
+
+  obstacles.push(...newProjectiles);
+
+  for (const p of particles) { p.x += p.vx;
+    p.y += p.vy;
+    p.vy += 0.15;
+    p.life--; }
+  particles = particles.filter(p => p.life > 0);
+  for (const f of floatTexts) { f.y -= 0.6;
+    f.life--; }
+  floatTexts = floatTexts.filter(f => f.life > 0);
+  if (banner) { banner.life--;
+    if (banner.life <= 0) banner = null; }
+  if (player.hitFlash > 0) player.hitFlash--;
+
+  draw(cssW);
+  updateHud();
+  if (!gameOverFlag) rafId = requestAnimationFrame(loop);
+}
+
+// =====================================================================
+// ОСНОВНАЯ ОТРИСОВКА
+// =====================================================================
+function draw(cssW) {
+  const box = document.getElementById('game-inner').getBoundingClientRect();
+  const now = performance.now();
+
+  ctx.clearRect(0, 0, cssW, box.height);
+  ctx.save();
+  ctx.translate(0, bgOffsetY);
+  if (theme.drawBackground) {
+    theme.drawBackground(ctx, cssW, box.height, scrollX, now);
+  } else {
+    ctx.fillStyle = '#0a0912';
+    ctx.fillRect(0, 0, cssW, box.height);
+  }
+  ctx.restore();
+
+  if (effects.reflect && now < effects.reflect) { ctx.fillStyle = 'rgba(201,85,107,0.10)';
+    ctx.fillRect(0, 0, cssW, box.height); }
+  if (effects.fly && now < effects.fly) {
+    ctx.fillStyle = selectedRole === 'merm' ? 'rgba(111,168,201,0.08)' : 'rgba(255,226,154,0.05)';
+    ctx.fillRect(0, 0, cssW, box.height);
+  }
+
+  ctx.save();
+  ctx.translate(0, bgOffsetY);
+
+  // Зоны опасности
+  for (const z of warningZones) {
+    if (z.x < -50) continue;
+    const cy = laneY(z.lane) + 18;
+    const alpha = (z.life / 80) * 0.4;
+
+    if (z.isTornado) {
+      const size = 30 + Math.sin(now * 0.005 + z.x) * 10;
+      for (let r = size; r > 5; r -= 4) {
+        const a = 0.08 * (1 - r / size);
+        ctx.fillStyle = `rgba(241, 196, 15, ${a * alpha})`;
+        ctx.beginPath();
+        ctx.ellipse(z.x, cy + Math.sin(now * 0.003 + z.x * 0.1) * 5, r, r * 0.5, 0, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      for (let i = 0; i < 8; i++) {
+        const angle = i / 8 * Math.PI * 2 + now * 0.002 + z.x * 0.1;
+        const dist = 10 + Math.sin(now * 0.004 + i * 1.2) * 15;
+        ctx.fillStyle = `rgba(200, 180, 150, ${0.1 * alpha})`;
+        ctx.beginPath();
+        ctx.arc(z.x + Math.cos(angle) * dist, cy + Math.sin(angle * 0.5 + now * 0.002) * 10, 2 + Math.sin(now * 0.005 + i) *
+          1, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.font = '20px serif';
+      ctx.fillStyle = `rgba(241, 196, 15, ${0.6 * alpha})`;
+      ctx.textAlign = 'center';
+      ctx.fillText('🌪️', z.x, cy + 4);
+    } else {
+      ctx.fillStyle = z.color || 'rgba(255,0,0,0.2)';
+      ctx.globalAlpha = alpha;
+      ctx.fillRect(z.x - z.width / 2, cy - 16, z.width, 32);
+      ctx.globalAlpha = 1;
+      if (z.label) {
+        ctx.font = 'bold 10px sans-serif';
+        ctx.fillStyle = '#fff';
+        ctx.textAlign = 'center';
+        ctx.fillText(z.label, z.x, cy + 3);
+      }
+    }
+  }
+
+  // Эффекты способностей
+  for (const e of abilityEffects) {
+    drawAbilityEffect(e, ctx, cssW, box.height);
+  }
+
+  // Объекты
+  for (const o of obstacles) {
+    ctx.save();
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    const cy = laneY(o.lane) + 18;
+
+    if (o.kind === 'fireball') {
+      const age = o.spawnAt ? performance.now() - o.spawnAt : 999;
+      const spawnPulse = age < 180 ? 1 + (1 - age / 180) * 0.9 : 1;
+      const r = 12 * spawnPulse;
+      const grd = ctx.createRadialGradient(o.x, cy, 1, o.x, cy, r);
+      grd.addColorStop(0, '#fff2c9');
+      grd.addColorStop(0.5, '#e2a23f');
+      grd.addColorStop(1, 'rgba(226,162,63,0)');
+      ctx.fillStyle = grd;
+      ctx.beginPath();
+      ctx.arc(o.x, cy, r, 0, 7);
+      ctx.fill();
+      ctx.font = (18 * spawnPulse) + 'px serif';
+      ctx.fillText(o.isMagic ? '✨' : '🔥', o.x, cy);
+      ctx.restore();
+      continue;
+    }
+
+    if (o.kind === 'venom') {
+      const age = o.spawnAt ? performance.now() - o.spawnAt : 999;
+      const spawnPulse = age < 180 ? 1 + (1 - age / 180) * 0.7 : 1;
+      const r = 11 * spawnPulse;
+      const grd = ctx.createRadialGradient(o.x, cy, 1, o.x, cy, r);
+      grd.addColorStop(0, '#d7f0c9');
+      grd.addColorStop(0.5, '#6f9573');
+      grd.addColorStop(1, 'rgba(111,149,115,0)');
+      ctx.fillStyle = grd;
+      ctx.beginPath();
+      ctx.arc(o.x, cy, r, 0, 7);
+      ctx.fill();
+      ctx.font = (16 * spawnPulse) + 'px serif';
+      ctx.fillText('☠️', o.x, cy);
+      ctx.restore();
+      continue;
+    }
+
+    if (o.kind === 'shockwave') {
+      const age = o.spawnAt ? performance.now() - o.spawnAt : 999;
+      const spawnPulse = age < 220 ? 1 + (1 - age / 220) * 0.9 : 1;
+      ctx.globalAlpha = 0.8;
+      ctx.strokeStyle = '#8a7a5a';
+      ctx.lineWidth = 3 * spawnPulse;
+      ctx.beginPath();
+      ctx.ellipse(o.x, cy + 14, 22 * spawnPulse, 6 * spawnPulse, 0, 0, 7);
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+      ctx.font = (20 * spawnPulse) + 'px serif';
+      ctx.fillText('💥', o.x, cy);
+      ctx.restore();
+      continue;
+    }
+
+    if (o.kind === 'web') {
+      ctx.globalAlpha = 0.92;
+      ctx.font = '22px serif';
+      ctx.fillText('🕸️', o.x, cy);
+      ctx.globalAlpha = 1;
+      ctx.restore();
+      continue;
+    }
+
+    if (o.kind === 'bone_shot') {
+      ctx.font = '24px serif';
+      ctx.fillText('🦴', o.x, cy);
+      ctx.restore();
+      continue;
+    }
+
+    // ПРЕПЯТСТВИЯ
+    if (o.kind === 'web_obstacle') {
+      ctx.globalAlpha = 0.7 + 0.3 * Math.sin(now * 0.003 + o.x);
+      for (let i = 0; i < 8; i++) {
+        const angle = i / 8 * Math.PI * 2;
+        ctx.beginPath();
+        ctx.moveTo(o.x, cy);
+        ctx.lineTo(o.x + Math.cos(angle) * 28, cy + Math.sin(angle) * 28);
+        ctx.strokeStyle = 'rgba(138, 127, 209, 0.4)';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+      }
+      for (let r = 8; r < 28; r += 7) {
+        ctx.beginPath();
+        ctx.arc(o.x, cy, r, 0, Math.PI * 2);
+        ctx.strokeStyle = 'rgba(138, 127, 209, 0.3)';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+      ctx.font = '28px serif';
+      ctx.fillText('🕸️', o.x, cy);
+      if (selectedRole === 'vamp') {
+        ctx.font = '12px sans-serif';
+        ctx.fillStyle = '#b6394a';
+        ctx.fillText('🩸 ПРОКУС', o.x, cy + 32);
+      }
+      ctx.restore();
+      continue;
+    }
+
+    if (o.kind === 'firewall_obstacle') {
+      const flicker = 0.8 + 0.2 * Math.sin(now * 0.01 + o.x * 0.1);
+      ctx.globalAlpha = 0.7 * flicker;
+      for (let i = -2; i <= 2; i++) {
+        const xOff = i * 8;
+        const height = 32 + 8 * Math.sin(now * 0.008 + i * 1.2 + o.x);
+        ctx.beginPath();
+        ctx.moveTo(o.x + xOff - 4, cy + 20);
+        ctx.quadraticCurveTo(o.x + xOff + Math.sin(now * 0.01 + i) * 4, cy - height / 2, o.x + xOff + 4, cy + 20);
+        ctx.fillStyle = i % 2 === 0 ? '#ff6b35' : '#ffb347';
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+      ctx.font = '24px serif';
+      ctx.fillText('🔥', o.x, cy - 2);
+      if (selectedRole === 'fire') {
+        ctx.font = '12px sans-serif';
+        ctx.fillStyle = '#e2a23f';
+        ctx.fillText('✨ ПРОХОД', o.x, cy + 32);
+      }
+      ctx.restore();
+      continue;
+    }
+
+    if (o.kind === 'ice_obstacle') {
+      ctx.globalAlpha = 0.6 + 0.4 * Math.sin(now * 0.002 + o.x * 0.2);
+      ctx.fillStyle = 'rgba(173, 216, 230, 0.3)';
+      ctx.beginPath();
+      ctx.ellipse(o.x, cy, 24, 16, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(173, 216, 230, 0.5)';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+      for (let i = 0; i < 4; i++) {
+        const angle = i / 4 * Math.PI * 2 + now * 0.0005;
+        ctx.beginPath();
+        ctx.moveTo(o.x, cy);
+        ctx.lineTo(o.x + Math.cos(angle) * 20 * (0.5 + 0.5 * Math.sin(now * 0.005 + i)), cy + Math.sin(angle) * 12 * (0.5 +
+          0.5 * Math.cos(now * 0.004 + i)));
+        ctx.strokeStyle = 'rgba(200, 230, 255, 0.3)';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+      ctx.font = '24px serif';
+      ctx.fillText('🧊', o.x, cy);
+      if (selectedRole === 'wolf') {
+        ctx.font = '12px sans-serif';
+        ctx.fillStyle = '#8a7a5a';
+        ctx.fillText('💨 РЫВОК', o.x, cy + 32);
+      }
+      ctx.restore();
+      continue;
+    }
+
+    if (o.kind === 'sand_obstacle') {
+      for (let i = -3; i <= 3; i++) {
+        const xOff = i * 7;
+        const waveY = cy + 12 * Math.sin(now * 0.005 + i * 0.8 + o.x * 0.05);
+        ctx.beginPath();
+        ctx.arc(o.x + xOff, waveY + 4, 4 + 2 * Math.sin(now * 0.007 + i * 1.1), 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(210, 180, 140, 0.2)';
+        ctx.fill();
+      }
+      ctx.font = '24px serif';
+      ctx.fillText('🏝️', o.x, cy);
+      if (selectedRole === 'merm') {
+        ctx.font = '12px sans-serif';
+        ctx.fillStyle = '#6fa8c9';
+        ctx.fillText('🌊 ПРОПЛЫТЬ', o.x, cy + 32);
+      }
+      ctx.restore();
+      continue;
+    }
+
+    if (o.kind === 'rune_obstacle') {
+      const pulse = 0.6 + 0.4 * Math.sin(now * 0.004 + o.x);
+      ctx.globalAlpha = pulse;
+      ctx.fillStyle = 'rgba(154, 127, 209, 0.15)';
+      ctx.fillRect(o.x - 22, cy - 20, 44, 40);
+      ctx.strokeStyle = 'rgba(154, 127, 209, 0.5)';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(o.x - 22, cy - 20, 44, 40);
+      ctx.font = '18px serif';
+      ctx.fillStyle = 'rgba(154, 127, 209, 0.6)';
+      ctx.fillText('ᛉᚨᛚ', o.x, cy + 4);
+      ctx.globalAlpha = 1;
+      ctx.font = '24px serif';
+      ctx.fillText('🧱', o.x, cy - 14);
+      if (selectedRole === 'mage') {
+        ctx.font = '12px sans-serif';
+        ctx.fillStyle = '#9a7fd1';
+        ctx.fillText('🌀 ПРОБИТЬ', o.x, cy + 32);
+      }
+      ctx.restore();
+      continue;
+    }
+
+    // ПОДБОР ПРЕДМЕТОВ
+    if (o.kind === 'pickup') {
+      const pulse = 1 + 0.1 * Math.sin(now * 0.003 + o.x);
+      ctx.beginPath();
+      ctx.arc(o.x, cy, 14 * pulse, 0, 7);
+      ctx.fillStyle = (o.talisman ? o.talisman.color : theme.accent) + '44';
+      ctx.fill();
+      ctx.strokeStyle = (o.talisman ? o.talisman.color : theme.accent);
+      ctx.lineWidth = 1.4;
+      ctx.stroke();
+      ctx.font = (22 * pulse) + 'px serif';
+      ctx.fillText(o.em, o.x, cy);
+      ctx.restore();
+      continue;
+    }
+
+    // МОБЫ
+    const haloR = 18;
+    const halo = ctx.createRadialGradient(o.x, cy, 1, o.x, cy, haloR);
+    halo.addColorStop(0, 'rgba(255,255,255,0.12)');
+    halo.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = halo;
+    ctx.beginPath();
+    ctx.arc(o.x, cy, haloR, 0, 7);
+    ctx.fill();
+
+    const burstGlow = Math.max(o.burstWarn || 0, o.burstProgress || 0);
+    if (burstGlow > 0) {
+      const gr = ctx.createRadialGradient(o.x, cy, 1, o.x, cy, 18);
+      gr.addColorStop(0, `rgba(226,90,63,${0.45 * burstGlow})`);
+      gr.addColorStop(1, 'rgba(226,90,63,0)');
+      ctx.fillStyle = gr;
+      ctx.beginPath();
+      ctx.arc(o.x, cy, 18, 0, 7);
+      ctx.fill();
+    }
+
+    if (o.charging) {
+      const chargeProgress = 1 - (o.charging - now) / 600;
+      ctx.beginPath();
+      ctx.arc(o.x, cy, 22, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * Math.min(chargeProgress, 1));
+      ctx.strokeStyle = '#f1c40f';
+      ctx.lineWidth = 3;
+      ctx.stroke();
+
+      // Голем с притяжением явно замахивается лассо на игрока перед рывком
+      if (o.key === 'chain_golem' && player.currentLane === o.lane) {
+        const t = Math.min(chargeProgress, 1);
+        const playerCy = player.y + 19;
+        const loopX = o.x - (o.x - player.x) * t;
+        drawChainLine(ctx, o.x, cy, loopX, playerCy, 'rgba(230, 126, 34, 0.85)', 1);
+        ctx.beginPath();
+        ctx.ellipse(loopX, playerCy, 9 + Math.sin(now * 0.02) * 2, 6, 0, 0, Math.PI * 2);
+        ctx.strokeStyle = '#e67e22';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      }
+    }
+
+    if (o.hp !== undefined && o.hp > 0 && o.maxHp > 2) {
+      const barWidth = 30;
+      const barX = o.x - barWidth / 2;
+      const barY = cy - 28;
+      ctx.fillStyle = 'rgba(0,0,0,0.5)';
+      ctx.fillRect(barX, barY, barWidth, 4);
+      ctx.fillStyle = o.hp / o.maxHp > 0.5 ? '#2ecc71' : '#e74c3c';
+      ctx.fillRect(barX, barY, barWidth * (o.hp / o.maxHp), 4);
+    }
+
+    if (o.shield > 0) {
+      ctx.strokeStyle = '#f39c12';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(o.x, cy, 20, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.font = '14px serif';
+      ctx.fillText('🛡️', o.x + 18, cy - 16);
+    }
+
+    ctx.shadowColor = 'rgba(255,255,255,0.4)';
+    ctx.shadowBlur = 6;
+    ctx.font = (24 + (o.burstProgress ? o.burstProgress * 4 : 0)) + 'px serif';
+    ctx.fillText(o.em, o.x, cy);
+    ctx.shadowBlur = 0;
+
+    if (o.specialAbility) {
+      ctx.font = '10px sans-serif';
+      ctx.fillStyle = '#f1c40f';
+      ctx.fillText('⚡', o.x + 18, cy - 14);
+    }
+
+    ctx.restore();
+  }
+
+  // СОЮЗНИК
+  if (ally) {
+    ctx.save();
+    const ay = laneY(ally.lane) + 19;
+    ctx.translate(ally.x, ay);
+    ctx.globalAlpha = 0.5 + 0.3 * Math.sin(performance.now() * 0.006);
+    ctx.beginPath();
+    ctx.arc(0, 0, 18, 0, 7);
+    ctx.fillStyle = ally.color + '33';
+    ctx.fill();
+    ctx.strokeStyle = ally.color;
+    ctx.lineWidth = 1.6;
+    ctx.stroke();
+    ctx.font = '19px serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.globalAlpha = 1;
+    ctx.fillText(ally.em, 0, 1);
+    ctx.font = '11px serif';
+    ctx.fillText(ally.abEm, 13, -13);
+    ctx.font = '9px serif';
+    ctx.fillStyle = '#e08a92';
+    ctx.globalAlpha = 1;
+    ctx.fillText('❤'.repeat(Math.max(ally.hp, 0)), 0, -24);
+    ctx.restore();
+  }
+
+  // ДВОЙНИК (талисман Тигра)
+  if (clone) {
+    ctx.save();
+    const cly = laneY(clone.lane) + 19;
+    ctx.translate(clone.x, cly);
+    ctx.globalAlpha = 0.45 + 0.15 * Math.sin(performance.now() * 0.008);
+    ctx.beginPath();
+    ctx.arc(0, 0, 19, 0, Math.PI * 2);
+    ctx.fillStyle = clone.color + '2a';
+    ctx.fill();
+    ctx.strokeStyle = clone.color;
+    ctx.setLineDash([3, 3]);
+    ctx.lineWidth = 1.6;
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.font = '22px serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(clone.em, 0, 1);
+    ctx.globalAlpha = 1;
+    ctx.font = '9px sans-serif';
+    ctx.fillStyle = '#9a7fd1';
+    ctx.fillText('⚡' + clone.energy, -14, -18);
+    if (clone.resource) {
+      ctx.fillStyle = clone.color;
+      ctx.fillText(String(clone.resourceAmount), 14, -18);
+    }
+    ctx.restore();
+  }
+  ctx.restore(); // конец сдвига фона/мобов от bgOffsetY
+
+  // ИГРОК
+  ctx.save();
+  const role = ROLES[selectedRole];
+  const invincible = effects.dash && now < effects.dash;
+  const flying = effects.fly && now < effects.fly;
+  const levitating = effects.levitate && now < effects.levitate;
+  const autoActive = effects.auto && now < effects.auto;
+  const shieldActive = !!effects.shield;
+  const reflectActive = effects.reflect && now < effects.reflect;
+  const webbed = player.webbed && now < player.webbed;
+  const slowed = effects.slow && now < effects.slow;
+  const jumpOff = getJumpOffset();
+  const isMermaidSwim = flying && selectedRole === 'merm';
+  const flyScale = flying ? (isMermaidSwim ? 1 : 0.6) : 1;
+  const flyBob = flying ? (isMermaidSwim ? Math.sin(now * 0.01) * 2 : -(13 + Math.sin(now * 0.007) * 4)) : 0;
+  const levitateBob = (levitating && !flying) ? -(16 + Math.sin(now * 0.006) * 4) : 0;
+  ctx.translate(player.x, player.y + 19 + jumpOff + flyBob + levitateBob);
+  if (flying) { ctx.scale(flyScale, flyScale); } else if (isJumping) {
+    const progress = Math.abs(jumpY) / JUMP_H;
+    const arc = Math.sin(Math.min(progress, 1) * Math.PI);
+    ctx.scale(1 - arc * 0.16, 1 + arc * 0.26);
+    if (progress < 0.5) ctx.rotate(-arc * 0.12);
+    else ctx.rotate(arc * 0.12);
+  }
+  if (player.hitFlash > 0 && player.hitFlash % 4 < 2) ctx.globalAlpha = 0.35;
+
+  if (slowed) { ctx.shadowColor = '#2ecc71';
+    ctx.shadowBlur = 20; }
+
+  ctx.beginPath();
+  ctx.arc(0, 0, flying ? 20 : 23, 0, 7);
+  ctx.fillStyle = flying ? (isMermaidSwim ? 'rgba(111,168,201,0.4)' : 'rgba(255,226,154,0.4)') : (levitating && !flying) ?
+    'rgba(242,214,117,0.35)' : (invincible || isJumping) ?
+    'rgba(226,162,63,0.35)' : role.color + '2e';
+  ctx.fill();
+
+  if (isMermaidSwim) {
+    ctx.strokeStyle = '#6fa8c9';
+    ctx.lineWidth = 2.2;
+    ctx.stroke();
+    ctx.font = '13px serif';
+    ctx.fillText('💧', 17, -17 - Math.sin(now * 0.01) * 2);
+    ctx.fillText('💧', -17, -15 + Math.sin(now * 0.012) * 2);
+    ctx.strokeStyle = 'rgba(111,168,201,0.25)';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([4, 8]);
+    ctx.beginPath();
+    ctx.arc(0, 0, 28, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+  } else if (flying) {
+    ctx.strokeStyle = '#ffe29a';
+    ctx.lineWidth = 2.2;
+    ctx.stroke();
+    ctx.font = '13px serif';
+    ctx.fillText('✨', 17, -17 - Math.sin(now * 0.01) * 2);
+    ctx.fillText('✨', -17, -15 + Math.sin(now * 0.012) * 2);
+    ctx.strokeStyle = 'rgba(255,226,154,0.2)';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([4, 8]);
+    ctx.beginPath();
+    ctx.arc(0, 0, 28, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+  } else if (levitating) {
+    ctx.strokeStyle = '#f2d675';
+    ctx.lineWidth = 2.2;
+    ctx.stroke();
+    ctx.font = '13px serif';
+    ctx.fillText('🪶', 17, -17 - Math.sin(now * 0.01) * 2);
+    ctx.fillText('🪶', -17, -15 + Math.sin(now * 0.012) * 2);
+    ctx.strokeStyle = 'rgba(242,214,117,0.22)';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([4, 8]);
+    ctx.beginPath();
+    ctx.arc(0, 0, 28, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+  } else if (invincible || isJumping) {
+    ctx.strokeStyle = '#e2a23f';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+  } else if (reflectActive) {
+    ctx.strokeStyle = '#c9556b';
+    ctx.lineWidth = 2.4;
+    ctx.stroke();
+    ctx.font = '12px serif';
+    ctx.fillText('🪞', 16, -16 - Math.sin(now * 0.012) * 2);
+  } else if (shieldActive && effects.fireflyOrbit) {
+    ctx.strokeStyle = '#f2d675';
+    ctx.lineWidth = 1.6;
+    ctx.setLineDash([3, 6]);
+    ctx.beginPath();
+    ctx.arc(0, 0, 27, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    const orbitAngle = now * 0.0035;
+    const fx = Math.cos(orbitAngle) * 27;
+    const fy = Math.sin(orbitAngle) * 27 * 0.5;
+    ctx.save();
+    ctx.shadowColor = '#f2d675';
+    ctx.shadowBlur = 12;
+    ctx.font = '13px serif';
+    ctx.fillText('🌟', fx, fy - 2);
+    ctx.restore();
+  } else if (shieldActive) {
+    ctx.strokeStyle = '#6fa8c9';
+    ctx.lineWidth = 2.5;
+    ctx.stroke();
+  } else if (webbed) {
+    ctx.strokeStyle = '#8a7fd1';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+  } else if (autoActive) {
+    ctx.strokeStyle = '#8fd6e8';
+    ctx.lineWidth = 1.6;
+    ctx.setLineDash([4, 4]);
+    ctx.lineDashOffset = -now * 0.06;
+    ctx.stroke();
+    ctx.setLineDash([]);
+  } else if (slowed) {
+    ctx.strokeStyle = '#2ecc71';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+  }
+
+  ctx.shadowBlur = 0;
+  ctx.font = '24px serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(role.em, 0, 1);
+  if (webbed) { ctx.font = '15px serif';
+    ctx.fillText('🕸️', 15, -15); }
+  if (slowed) { ctx.font = '12px serif';
+    ctx.fillText('🐢', 18, 12); }
+  if (player.poisonTicks > 0) { ctx.font = '14px serif';
+    ctx.fillText('☠️', -18, -14); }
+  ctx.restore();
+
+  if (isJumping || flying || levitating) {
+    const heightFactor = flying ? 0.5 : levitating ? 0.45 : Math.min(Math.abs(jumpY) / JUMP_H, 1) * 0.55;
+    const shadowScale = 1 - heightFactor;
+    ctx.save();
+    ctx.globalAlpha = 0.25 * shadowScale + 0.08;
+    ctx.beginPath();
+    ctx.ellipse(player.x, player.y + 34, 16 * shadowScale, 4 * shadowScale, 0, 0, 7);
+    ctx.fillStyle = '#000';
+    ctx.fill();
+    ctx.restore();
+  }
+
+  for (const p of particles) {
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, 2.4, 0, 7);
+    ctx.fillStyle = p.color;
+    ctx.globalAlpha = Math.max(p.life / 26, 0);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+
+  ctx.font = '600 12px JetBrains Mono, monospace';
+  ctx.textAlign = 'center';
+  for (const f of floatTexts) {
+    ctx.globalAlpha = Math.max(f.life / 44, 0);
+    ctx.fillStyle = f.color;
+    ctx.fillText(f.text, f.x, f.y);
+    ctx.globalAlpha = 1;
+  }
+
+  if (banner) {
+    ctx.globalAlpha = Math.min(banner.life / 100, 1) * 0.95;
+    ctx.font = '700 15px Cinzel, serif';
+    ctx.textAlign = 'center';
+    ctx.fillStyle = banner.color;
+    ctx.fillText(banner.text, cssW / 2, 26);
+    ctx.globalAlpha = 1;
+  }
+}
+
+function endGame() {
+  const role = ROLES[selectedRole];
+  if (role.secondWind && hp <= 0 && mordMarks >= role.cost) {
+    mordMarks -= role.cost;
+    hp = MAX_HP;
+    player.hitFlash = 0;
+    const now = performance.now();
+    effects.fly = now + 1500;
+    effects.dash = now + 1500;
+    createAbilityEffect('fly', player.x, player.y + 19 + getJumpOffset(), player.currentLane, role.color);
+    spawnBurst(player.x, player.y, role.color);
+    spawnFloat(player.x, player.y - 30, '🔴 ВТОРОЕ ДЫХАНИЕ! ВТОРАЯ ЖИЗНЬ!', role.color);
+    showBanner('🔴 ВТОРОЕ ДЫХАНИЕ! ВТОРАЯ ЖИЗНЬ!', role.color);
+    updateHud();
+    return;
+  }
+  gameOverFlag = true;
+  running = false;
+  cancelAnimationFrame(rafId);
+  document.getElementById('end-sc').textContent = Math.floor(distance);
+  document.getElementById('end-di').textContent = diamonds;
+  document.getElementById('end-loc').textContent = `${theme.pin} ${theme.name}`;
+  document.getElementById('end-overlay').classList.remove('hidden');
+
+  if (tgReady) {
+    const statusEl = document.getElementById('tg-sync-status');
+    statusEl.style.display = 'block';
+    statusEl.textContent = 'Отправляю 💎 в бота...';
+    tgApiPostScore(diamonds).then(res => {
+      if (res && res.ok) {
+        statusEl.textContent = `✅ Зачислено +${res.added}💎 (всего: ${res.total_score}💎)`;
+      } else if (res && res.error === 'too_fast') {
+        statusEl.textContent = '⏳ Слишком часто — очки не отправлены, попробуй в следующий раз';
+      } else {
+        statusEl.textContent = '⚠️ Не удалось отправить очки боту';
+      }
+      tgLoadLeaderboard();
+    });
+  }
+}
+
+function startGame() {
+  document.getElementById('start-overlay').classList.add('hidden');
+  document.getElementById('end-overlay').classList.add('hidden');
+  document.getElementById('ability-btn').textContent = ROLES[selectedRole].abEm;
+  document.getElementById('ability-label').textContent = ROLES[selectedRole].ability;
+
+  const keys = Object.keys(LOCATIONS);
+  const locKey = keys[rnd(0, keys.length - 1)];
+  theme = LOCATIONS[locKey];
+  roster = theme.mobs;
+  document.getElementById('loc-pill').textContent = `${theme.pin} ${theme.name}`;
+
+  // Пилюли энергии/ресурса роли переключаем ДО resize(), чтобы HUD уже принял
+  // окончательную высоту (в т.ч. с переносом строк) к моменту замера #game-inner —
+  // иначе GROUND считался по старой, более высокой раскладке (пилюли ещё скрыты
+  // по умолчанию до первого resetState), и после их появления сцена съезжала вниз.
+  const role = ROLES[selectedRole];
+  document.getElementById('energy-pill').style.display = role.energyCost ? 'flex' : 'none';
+  document.getElementById('gear-pill').style.display = role.resource === 'gear' ? 'flex' : 'none';
+  document.getElementById('mc-pill').style.display = role.resource === 'crystal' ? 'flex' : 'none';
+  document.getElementById('shell-pill').style.display = role.resource === 'shell' ? 'flex' : 'none';
+  document.getElementById('blood-pill').style.display = role.resource === 'blood' ? 'flex' : 'none';
+  document.getElementById('mark-pill').style.display = role.resource === 'mark' ? 'flex' : 'none';
+  document.getElementById('butterfly-pill').style.display = role.resource === 'butterfly' ? 'flex' : 'none';
+
+  resize();
+  resetState();
+  running = true;
+  rafId = requestAnimationFrame(loop);
+}
+
+function backToSelect() {
+  document.getElementById('end-overlay').classList.add('hidden');
+  document.getElementById('start-overlay').classList.remove('hidden');
+}
+
+resize();
+</script>
+</body>
+</html>
